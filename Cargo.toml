@@ -1,0 +1,25 @@
+[workspace]
+members = [".", "tools/assetgen"]
+default-members = ["."]
+resolver = "2"
+
+[package]
+name = "ephemeris"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal live day/night world map screensaver with geolocated news"
+license = "MIT"
+publish = false
+
+[dependencies]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Keep asset decoding fast in debug builds.
+[profile.dev.package."*"]
+opt-level = 2

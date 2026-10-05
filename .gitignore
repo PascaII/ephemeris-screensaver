@@ -1,0 +1,4 @@
+/target
+/tools/assetgen/cache
+*.scr
+.DS_Store
