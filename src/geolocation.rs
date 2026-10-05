@@ -264,17 +264,21 @@ impl Gazetteer {
             return None;
         }
 
-        // Most specific place inside that country.
-        let mut specific: HashMap<usize, f64> = HashMap::new();
+        // Most specific place inside that country (in order of first mention, so ties are stable).
+        let mut specific: Vec<(usize, f64)> = Vec::new();
         for (p, w) in &chosen {
             let pl = &self.places[*p];
             if pl.iso == iso && pl.kind != Kind::Country {
-                *specific.entry(*p).or_default() += w;
+                match specific.iter_mut().find(|(q, _)| q == p) {
+                    Some((_, sum)) => *sum += w,
+                    None => specific.push((*p, *w)),
+                }
             }
         }
         let place = specific
             .iter()
-            .max_by(|a, b| a.1.total_cmp(b.1).then(self.places[*a.0].pop.cmp(&self.places[*b.0].pop)))
+            .rev() // max_by returns the last maximum; reversing makes it the first mentioned
+            .max_by(|a, b| a.1.total_cmp(&b.1).then(self.places[a.0].pop.cmp(&self.places[b.0].pop)))
             .map(|(p, _)| *p)
             .or_else(|| chosen.iter().map(|(p, _)| *p).find(|p| self.places[*p].iso == iso))?;
         let pl = &self.places[place];
