@@ -4,7 +4,8 @@
 //! - `land_sdf.png`   2048x1024 R8 signed distance field of land (equirectangular), 128 = coastline
 //! - `lights.png`     4096x2048 R8 NASA Black Marble 2016 night lights (equirectangular)
 //! - `gazetteer.tsv`  countries + populated places with DE/EN names for headline geolocation
-//! - `Inter-*.otf`    Latin subset of the Inter font (if `uvx` is available for fonttools)
+//! - `SourceSans3-*.otf`, `SourceSerif4Display-Semibold.otf`
+//!                    Latin subsets of Adobe's Source fonts (if `uvx` is available for fonttools)
 
 use image::{imageops::FilterType, GrayImage, Luma};
 use serde_json::Value;
@@ -12,7 +13,7 @@ use std::{fs, path::Path, process::Command};
 
 const NE: &str = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson";
 const BLACK_MARBLE: &str = "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144897/BlackMarble_2016_3km_gray.jpg";
-const INTER: &str = "https://github.com/rsms/inter/raw/v3.19/docs/font-files";
+const ADOBE: &str = "https://github.com/adobe-fonts";
 
 /// Hi-res raster used to build the SDF; the output is downsampled by `SDF_SCALE`.
 const HI_W: usize = 8192;
@@ -39,10 +40,13 @@ fn main() {
     land_sdf(&land, &out.join("land_sdf.png"));
     night_lights(&lights, &out.join("lights.png"));
     gazetteer(&countries, &places, &out.join("gazetteer.tsv"));
-    for weight in ["Regular", "Medium"] {
-        let name = format!("Inter-{weight}.otf");
-        let src = fetch(&cache, &format!("{INTER}/{name}"), &name);
-        subset_font(&src, &out.join(&name));
+    for (repo, name) in [
+        ("source-sans", "SourceSans3-Regular.otf"),
+        ("source-sans", "SourceSans3-Semibold.otf"),
+        ("source-serif", "SourceSerif4Display-Semibold.otf"),
+    ] {
+        let src = fetch(&cache, &format!("{ADOBE}/{repo}/raw/release/OTF/{name}"), name);
+        subset_font(&src, &out.join(name));
     }
 }
 
@@ -215,7 +219,7 @@ fn night_lights(src: &Path, dst: &Path) {
     // Clamp the faint noise floor to pure black: invisible on screen, but it compresses far better.
     let small = GrayImage::from_fn(small.width(), small.height(), |x, y| {
         let v = small.get_pixel(x, y)[0];
-        Luma([if v < 8 { 0 } else { v }])
+        Luma([if v < 3 { 0 } else { v }])
     });
     small.save(dst).unwrap();
     eprintln!("wrote {} ({} KB)", dst.display(), fs::metadata(dst).unwrap().len() / 1024);
