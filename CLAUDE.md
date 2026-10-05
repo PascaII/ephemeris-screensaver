@@ -21,18 +21,30 @@ Guiding principle: **look sophisticated, stay extremely small, fast and efficien
 
 ## Layout
 ```
-src/main.rs          arg parsing (/s /c /p <hwnd>, --window) + event loop
-src/app.rs           frame pacing, input handling (hybrid screensaver input), state
-src/config.rs        TOML config (%APPDATA%\Ephemeris\config.toml), defaults
-src/astronomy.rs     subsolar point from UTC (pure, unit-tested)
-src/renderer/        GL setup, map shader, text atlas, markers/cards
-src/news/            Source abstraction, RSS parser, feed definitions, refresh thread
-src/geolocation.rs   article -> coordinates via embedded gazetteer (+ NYT geo tags)
-src/dedup.rs         cluster articles from several sources into one Event, score events
-src/cache.rs         local JSON cache with 72 h expiry + HTTP validators
-assets/              generated, committed: land SDF, night lights, gazetteer
-tools/assetgen/      offline preprocessing (downloads Natural Earth + NASA Black Marble)
+src/main.rs              arg parsing (/s, /p <hwnd>, /c, --window, --screenshot, --at, --dump-news)
+src/app.rs               frame pacing, spotlight cycling, card fades, hybrid input, secondary monitors
+src/config.rs            TOML config (%APPDATA%\Ephemeris\config.toml), defaults, cache dir
+src/astronomy.rs         subsolar point from UTC (pure, unit-tested)
+src/renderer/mod.rs      GL context/window creation, Renderer, Blank (secondary monitors)
+src/renderer/map.rs      map pass + View (Miller projection, lat/lon -> pixels)
+src/renderer/shaders/    map.frag (land SDF, day/night, twilight, lights), ui.vert/ui.frag (2D batch)
+src/renderer/ui.rs       immediate-mode 2D batch: rects, discs, rings, glows, text
+src/renderer/text.rs     fontdue glyph atlas, measuring, wrapping, ellipsis
+src/renderer/overlay.rs  markers, labels, event card, clock, attribution; returns hit regions
+src/news/mod.rs          Article, Source trait, refresh (conditional GET + cache), events pipeline, thread
+src/news/rss.rs          RSS 2.0 parser (NYT geo/entity tags, NZZ kickers)
+src/geolocation.rs       article -> Location via gazetteer + aliases (weighted mentions)
+src/dedup.rs             IDF cosine + anchor rule, agglomerative average-linkage, event scoring
+src/cache.rs             local JSON cache with 72 h expiry + HTTP validators
+assets/                  land_sdf.png, lights.png, gazetteer.tsv (generated); aliases.tsv (hand-curated); Inter subsets
+tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA Black Marble + Inter)
 ```
+
+## Tuning geolocation / dedup
+- `cargo run --release -- --dump-news` prints the clustered events with their articles.
+- `EPHEMERIS_DEBUG_DEDUP=1` additionally logs every merge with the shared features.
+- Wrong or missing places: add to `assets/aliases.tsv` (demonyms, regions, stoplist). Keep tests in
+  `geolocation.rs` / `dedup.rs` passing and add a case for the fix.
 
 ## Data sources & licensing
 - Natural Earth (land, populated places, countries): public domain.
@@ -48,9 +60,12 @@ tools/assetgen/      offline preprocessing (downloads Natural Earth + NASA Black
 
 ## Commands
 ```sh
-cargo run --release -- --window      # dev window (macOS / Windows)
-cargo test                           # unit tests (astronomy, rss, geolocation, dedup)
-cargo run -p assetgen --release      # regenerate assets/ (downloads source data into tools/assetgen/cache)
+cargo run --release -- --window                  # dev window (macOS / Windows)
+cargo run --release -- --screenshot out.png      # render one frame to PNG (add --at <unix> for a fixed time)
+cargo run --release -- --dump-news               # print clustered news events
+cargo test                                       # unit tests (astronomy, rss, geolocation, dedup, args)
+cargo check --target x86_64-pc-windows-msvc      # type-check Windows-only code from macOS
+cargo run -p assetgen --release                  # regenerate assets/ (needs curl; uvx for font subsetting)
 ```
 Windows `.scr`: CI builds `target/release/ephemeris.exe` on `windows-latest` and uploads it as `ephemeris.scr`.
 
