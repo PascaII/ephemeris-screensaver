@@ -3,5 +3,8 @@ name = "assetgen"
 version = "0.1.0"
 edition = "2021"
 publish = false
+description = "Offline preprocessing of map, night-light and gazetteer assets for ephemeris"
 
 [dependencies]
+serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
