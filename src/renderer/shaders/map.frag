@@ -1,11 +1,12 @@
 #version 330 core
-// World map: Miller projection, land SDF, day/night with twilight, NASA night lights.
+// World map: Miller projection, NASA Blue Marble by day, day/night with twilight, NASA night lights.
 
 uniform vec2 u_res;          // framebuffer size in pixels
 uniform vec4 u_view;         // x: y_top (Miller units), y: y_span, z: centre longitude (rad), w: x offset px
 uniform vec2 u_sun;          // subsolar point (lat, lon) in radians
 uniform sampler2D u_land;    // R8 SDF, 128 = coast, 8 steps per texel, land positive
 uniform sampler2D u_lights;  // R8 night lights
+uniform sampler2D u_marble;  // RGB Blue Marble true colour
 
 out vec4 frag;
 
@@ -32,13 +33,16 @@ void main() {
     }
 
     vec2 tc = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);
+    // Gradients of the unwrapped coordinate: fract() jumps at the antimeridian, which would make
+    // mipmapped lookups pick the smallest level there and draw a seam.
+    vec2 tcu = vec2(lon / (2.0 * PI), tc.y);
+    vec2 tdx = dFdx(tcu), tdy = dFdy(tcu);
 
     // --- land / coast from the signed distance field
     float sdf = (texture(u_land, tc).r * 255.0 - 128.0) / 8.0; // in SDF texels
     float aa = max(fwidth(sdf), 1e-4) * 0.75;
     float land = smoothstep(-aa, aa, sdf);
     float coast = 1.0 - smoothstep(0.0, aa * 1.6, abs(sdf));
-    float shelf = exp(-max(-sdf, 0.0) * 0.35) * (1.0 - land); // faint glow off the coast
 
     // --- sun
     float cosz = dot(unit(lat, lon), unit(u_sun.x, u_sun.y)); // sine of solar altitude
@@ -46,19 +50,17 @@ void main() {
     float night = 1.0 - smoothstep(-0.21, -0.02, cosz);        // fully dark below ~ -12°
     float dusk = exp(-pow((cosz + 0.05) / 0.09, 2.0));         // soft band just past the terminator
 
-    // Nocturne palette: day land is 2.4:1 against night land so the terminator reads at a glance.
-    vec3 ocean_night = vec3(0.043, 0.075, 0.110);  // #0b131c
-    vec3 ocean_day   = vec3(0.106, 0.184, 0.251);  // #1b2f40
-    vec3 land_night  = vec3(0.082, 0.110, 0.141);  // #151c24
-    vec3 land_day    = vec3(0.298, 0.349, 0.396);  // #4c5965
-    vec3 coast_night = vec3(0.149, 0.192, 0.239);  // #26313d
-    vec3 coast_day   = vec3(0.490, 0.545, 0.588);  // #7d8b96
-    vec3 twilight    = vec3(0.420, 0.290, 0.227);  // #6b4a3a
+    // Blue Marble: the photo by day, pulled almost to black at night. Sea comes from the same
+    // image, so the coastline only needs a light touch.
+    vec3 marble = textureGrad(u_marble, tc, tdx, tdy).rgb;
+    vec3 ground_night = vec3(0.008, 0.020, 0.039);  // #02050a
+    vec3 coast_night  = vec3(0.114, 0.165, 0.227);  // #1d2a3a
+    vec3 coast_day    = vec3(0.624, 0.706, 0.776);  // #9fb4c6
+    vec3 twilight     = vec3(0.416, 0.247, 0.165);  // #6a3f2a
 
-    vec3 col = mix(mix(ocean_night, ocean_day, day), mix(land_night, land_day, day), land);
-    col += shelf * 0.0105 * (0.4 + day) * vec3(0.5, 0.75, 1.0);
-    col = mix(col, mix(coast_night, coast_day, day), coast * 0.55);
-    col += dusk * twilight * 0.35 * (0.3 + 0.7 * land);
+    vec3 col = mix(marble * 0.05 + ground_night, marble * 1.05, day);
+    col = mix(col, mix(coast_night, coast_day, day), coast * 0.12);
+    col += dusk * twilight * 0.3 * (0.3 + 0.7 * land);
 
     // Graticule every 30°, barely visible.
     vec2 g = vec2(lon, lat) / (PI / 6.0);
@@ -67,7 +69,7 @@ void main() {
 
     // --- city lights, only where it is dark. A soft gamma keeps small towns; a coarse mip level
     // adds a halo around cities. Dim pixels are amber, bright ones white-gold.
-    float l = texture(u_lights, tc).r;
+    float l = textureGrad(u_lights, tc, tdx, tdy).r;
     float halo = textureLod(u_lights, tc, 3.0).r;
     vec3 tint = mix(vec3(1.0, 0.604, 0.235), vec3(1.0, 0.890, 0.690), min(l * 1.3, 1.0)); // #ff9a3c -> #ffe3b0
     col += tint * (pow(l, 0.75) * 1.05 + halo * 0.9) * night;

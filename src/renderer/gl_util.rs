@@ -67,6 +67,37 @@ pub unsafe fn gray_png_texture(gl: &glow::Context, png_bytes: &[u8], mipmaps: bo
     tex
 }
 
+/// Decode an 8-bit RGB PNG and upload it as a mipmapped RGB8 texture (longitude wraps).
+pub unsafe fn rgb_png_texture(gl: &glow::Context, png_bytes: &[u8]) -> glow::Texture {
+    let mut reader = png::Decoder::new(png_bytes).read_info().expect("png header");
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).expect("png data");
+    assert_eq!(info.color_type, png::ColorType::Rgb, "expected rgb png");
+    assert_eq!(info.bit_depth, png::BitDepth::Eight, "expected 8-bit png");
+    buf.truncate(info.buffer_size());
+
+    let tex = gl.create_texture().expect("create texture");
+    gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+    gl.pixel_store_i32(glow::UNPACK_ALIGNMENT, 1);
+    gl.tex_image_2d(
+        glow::TEXTURE_2D,
+        0,
+        glow::RGB8 as i32,
+        info.width as i32,
+        info.height as i32,
+        0,
+        glow::RGB,
+        glow::UNSIGNED_BYTE,
+        glow::PixelUnpackData::Slice(Some(&buf)),
+    );
+    gl.generate_mipmap(glow::TEXTURE_2D);
+    gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::LINEAR_MIPMAP_LINEAR as i32);
+    gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, glow::LINEAR as i32);
+    gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, glow::REPEAT as i32);
+    gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, glow::CLAMP_TO_EDGE as i32);
+    tex
+}
+
 /// 2x2 box downsample of an 8-bit single-channel image.
 fn halve(src: &[u8], w: usize, h: usize) -> Vec<u8> {
     let (nw, nh) = (w / 2, h / 2);

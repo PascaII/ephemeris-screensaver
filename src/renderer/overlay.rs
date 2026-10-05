@@ -285,7 +285,7 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, land: &LandGrid, o: &O
         (time_text, date_text, big, small, tw, dw, base)
     });
     let credit = TextStyle { weight: Weight::Regular, size: (13.0 * s).round(), color: rgba(CREDIT, 1.0), tracking: 0.0 };
-    let credit_text = format!("{}   Lights: NASA Black Marble   Map: Natural Earth", o.credits);
+    let credit_text = format!("{}   Imagery: NASA Blue Marble, Black Marble   Coastlines: Natural Earth", o.credits);
     let cw = ui.fonts.measure(credit.weight, credit.size, 0.0, &credit_text);
     keep_out.push(Rect { x: w - margin - cw - 8.0 * s, y: h - 40.0 * s - credit.size - 8.0 * s, w: cw + margin + 8.0 * s, h: 40.0 * s + credit.size + 8.0 * s });
 

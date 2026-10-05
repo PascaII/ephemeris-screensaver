@@ -6,6 +6,7 @@ use glow::HasContext;
 
 static LAND_SDF: &[u8] = include_bytes!("../../assets/land_sdf.png");
 static LIGHTS: &[u8] = include_bytes!("../../assets/lights.png");
+static MARBLE: &[u8] = include_bytes!("../../assets/bluemarble.png");
 
 /// Northern edge of the visible map. Miller y-coordinate of 84°N.
 pub const TOP_LAT: f64 = 84.0;
@@ -16,6 +17,7 @@ pub struct MapPass {
     vao: glow::VertexArray,
     land: glow::Texture,
     lights: glow::Texture,
+    marble: glow::Texture,
     u_res: Option<glow::UniformLocation>,
     u_view: Option<glow::UniformLocation>,
     u_sun: Option<glow::UniformLocation>,
@@ -169,9 +171,11 @@ impl MapPass {
         let program = gl_util::program(gl, include_str!("shaders/fullscreen.vert"), include_str!("shaders/map.frag"));
         let land = gl_util::gray_png_texture(gl, LAND_SDF, false, u32::MAX);
         let lights = gl_util::gray_png_texture(gl, LIGHTS, true, screen_width.max(1024));
+        let marble = gl_util::rgb_png_texture(gl, MARBLE);
         gl.use_program(Some(program));
         gl.uniform_1_i32(gl.get_uniform_location(program, "u_land").as_ref(), 0);
         gl.uniform_1_i32(gl.get_uniform_location(program, "u_lights").as_ref(), 1);
+        gl.uniform_1_i32(gl.get_uniform_location(program, "u_marble").as_ref(), 2);
         MapPass {
             vao: gl.create_vertex_array().expect("vao"),
             u_res: gl.get_uniform_location(program, "u_res"),
@@ -180,6 +184,7 @@ impl MapPass {
             program,
             land,
             lights,
+            marble,
         }
     }
 
@@ -189,6 +194,8 @@ impl MapPass {
         gl.bind_texture(glow::TEXTURE_2D, Some(self.land));
         gl.active_texture(glow::TEXTURE1);
         gl.bind_texture(glow::TEXTURE_2D, Some(self.lights));
+        gl.active_texture(glow::TEXTURE2);
+        gl.bind_texture(glow::TEXTURE_2D, Some(self.marble));
         gl.uniform_2_f32(self.u_res.as_ref(), view.width as f32, view.height as f32);
         gl.uniform_4_f32(
             self.u_view.as_ref(),

@@ -1,7 +1,7 @@
 # Ephemeris — project guide for agents
 
 Minimal, lightweight **Windows screensaver** (`.scr`) written in Rust. It shows a flat 16:9 world map with:
-- the real-time solar terminator (day/night + twilight)
+- NASA Blue Marble imagery by day and the real-time solar terminator (day/night + twilight)
 - NASA night-lights that appear on the night side
 - geolocated, **deduplicated** news events from NZZ, BBC and NYT RSS feeds (last 72 h)
 
@@ -27,7 +27,7 @@ src/config.rs            TOML config (%APPDATA%\Ephemeris\config.toml), topic/pu
 src/astronomy.rs         subsolar point from UTC (pure, unit-tested)
 src/renderer/mod.rs      GL context/window creation, Renderer, Blank (secondary monitors)
 src/renderer/map.rs      map pass + View (Miller projection), LandGrid (land coverage for callout placement)
-src/renderer/shaders/    map.frag (land SDF, day/night, twilight, lights), ui.vert/ui.frag (2D batch)
+src/renderer/shaders/    map.frag (Blue Marble, land SDF coast, day/night, twilight, lights), ui.vert/ui.frag (2D batch)
 src/renderer/ui.rs       immediate-mode 2D batch: rects, discs, rings, glows, text
 src/renderer/text.rs     fontdue glyph atlas, measuring, wrapping, ellipsis
 src/renderer/overlay.rs  markers, labels, callout (placed over water, leader line), clock, attribution; hit regions
@@ -36,8 +36,8 @@ src/news/rss.rs          RSS 2.0 parser (NYT geo/entity tags, NZZ kickers)
 src/geolocation.rs       article -> Location via gazetteer + aliases (weighted mentions)
 src/dedup.rs             IDF cosine + anchor rule, agglomerative average-linkage, event scoring
 src/cache.rs             local JSON cache with 72 h expiry + HTTP validators
-assets/                  land_sdf.png, lights.png, gazetteer.tsv (generated); aliases.tsv (hand-curated); Source Sans 3 / Source Serif 4 subsets
-tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA Black Marble + Adobe Source fonts)
+assets/                  land_sdf.png, lights.png, bluemarble.png, gazetteer.tsv (generated); aliases.tsv (hand-curated); Source Sans 3 / Source Serif 4 subsets
+tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA Blue/Black Marble + Adobe Source fonts)
 ```
 
 ## Tuning geolocation / dedup
@@ -48,7 +48,7 @@ tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA B
 
 ## Data sources & licensing
 - Natural Earth (land, populated places, countries): public domain.
-- NASA Black Marble 2016 night lights: public domain (credit NASA Earth Observatory).
+- NASA Blue Marble Next Generation (July 2004) and Black Marble 2016 night lights: public domain (credit NASA Earth Observatory).
 - Source Sans 3 and Source Serif 4 (Adobe): SIL OFL.
 - News RSS (NZZ, BBC, NYT): **personal, non-commercial use only.** Show headline/teaser/link with attribution.
   NZZ forbids permanent storage, so the cache only keeps headline/teaser/link and expires after 72 h.
