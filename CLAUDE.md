@@ -26,18 +26,18 @@ src/app.rs               frame pacing, spotlight cycling, card fades, hybrid inp
 src/config.rs            TOML config (%APPDATA%\Ephemeris\config.toml), topic/publisher feed catalog, cache dir
 src/astronomy.rs         subsolar point from UTC (pure, unit-tested)
 src/renderer/mod.rs      GL context/window creation, Renderer, Blank (secondary monitors)
-src/renderer/map.rs      map pass + View (Miller projection, lat/lon -> pixels)
+src/renderer/map.rs      map pass + View (Miller projection), LandGrid (land coverage for callout placement)
 src/renderer/shaders/    map.frag (land SDF, day/night, twilight, lights), ui.vert/ui.frag (2D batch)
 src/renderer/ui.rs       immediate-mode 2D batch: rects, discs, rings, glows, text
 src/renderer/text.rs     fontdue glyph atlas, measuring, wrapping, ellipsis
-src/renderer/overlay.rs  markers, labels, event card, clock, attribution; returns hit regions
+src/renderer/overlay.rs  markers, labels, callout (placed over water, leader line), clock, attribution; hit regions
 src/news/mod.rs          Article, Source trait, refresh (conditional GET + cache), events pipeline, thread
 src/news/rss.rs          RSS 2.0 parser (NYT geo/entity tags, NZZ kickers)
 src/geolocation.rs       article -> Location via gazetteer + aliases (weighted mentions)
 src/dedup.rs             IDF cosine + anchor rule, agglomerative average-linkage, event scoring
 src/cache.rs             local JSON cache with 72 h expiry + HTTP validators
-assets/                  land_sdf.png, lights.png, gazetteer.tsv (generated); aliases.tsv (hand-curated); Inter subsets
-tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA Black Marble + Inter)
+assets/                  land_sdf.png, lights.png, gazetteer.tsv (generated); aliases.tsv (hand-curated); Source Sans 3 / Source Serif 4 subsets
+tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA Black Marble + Adobe Source fonts)
 ```
 
 ## Tuning geolocation / dedup
@@ -49,7 +49,7 @@ tools/assetgen/          offline preprocessing (downloads Natural Earth + NASA B
 ## Data sources & licensing
 - Natural Earth (land, populated places, countries): public domain.
 - NASA Black Marble 2016 night lights: public domain (credit NASA Earth Observatory).
-- Inter font: SIL OFL.
+- Source Sans 3 and Source Serif 4 (Adobe): SIL OFL.
 - News RSS (NZZ, BBC, NYT): **personal, non-commercial use only.** Show headline/teaser/link with attribution.
   NZZ forbids permanent storage, so the cache only keeps headline/teaser/link and expires after 72 h.
 

@@ -25,7 +25,7 @@ void main() {
     float lon = ((px.x - u_view.w) / map_w - 0.5) * 2.0 * PI + u_view.z;
     float lat = miller_lat(u_view.x - (1.0 - px.y / u_res.y) * u_view.y);
 
-    vec3 background = vec3(0.012, 0.016, 0.022);
+    vec3 background = vec3(0.039, 0.063, 0.094);  // ground #0a1018
     if (abs(lat) > 1.55 || px.x < u_view.w || px.x > u_res.x - u_view.w) {
         frag = vec4(background, 1.0);
         return;
@@ -46,29 +46,35 @@ void main() {
     float night = 1.0 - smoothstep(-0.21, -0.02, cosz);        // fully dark below ~ -12°
     float dusk = exp(-pow((cosz + 0.05) / 0.09, 2.0));         // soft band just past the terminator
 
-    vec3 ocean_night = vec3(0.016, 0.022, 0.032);
-    vec3 ocean_day   = vec3(0.040, 0.066, 0.096);
-    vec3 land_night  = vec3(0.040, 0.048, 0.060);
-    vec3 land_day    = vec3(0.135, 0.150, 0.165);
+    // Nocturne palette: day land is 2.4:1 against night land so the terminator reads at a glance.
+    vec3 ocean_night = vec3(0.043, 0.075, 0.110);  // #0b131c
+    vec3 ocean_day   = vec3(0.106, 0.184, 0.251);  // #1b2f40
+    vec3 land_night  = vec3(0.082, 0.110, 0.141);  // #151c24
+    vec3 land_day    = vec3(0.298, 0.349, 0.396);  // #4c5965
+    vec3 coast_night = vec3(0.149, 0.192, 0.239);  // #26313d
+    vec3 coast_day   = vec3(0.490, 0.545, 0.588);  // #7d8b96
+    vec3 twilight    = vec3(0.420, 0.290, 0.227);  // #6b4a3a
 
-    vec3 ocean = mix(ocean_night, ocean_day, day) + shelf * mix(0.010, 0.022, day) * vec3(0.5, 0.75, 1.0);
-    vec3 col = mix(ocean, mix(land_night, land_day, day), land);
-    col += coast * mix(vec3(0.05, 0.065, 0.08), vec3(0.11, 0.13, 0.15), day);
-    col += dusk * vec3(0.040, 0.024, 0.034) * (0.3 + 0.7 * land);
+    vec3 col = mix(mix(ocean_night, ocean_day, day), mix(land_night, land_day, day), land);
+    col += shelf * 0.0105 * (0.4 + day) * vec3(0.5, 0.75, 1.0);
+    col = mix(col, mix(coast_night, coast_day, day), coast * 0.55);
+    col += dusk * twilight * 0.35 * (0.3 + 0.7 * land);
 
     // Graticule every 30°, barely visible.
     vec2 g = vec2(lon, lat) / (PI / 6.0);
     vec2 gd = abs(fract(g - 0.5) - 0.5) / fwidth(g);
-    col += (1.0 - min(min(gd.x, gd.y), 1.0)) * 0.012;
+    col = mix(col, vec3(0.933, 0.949, 0.957), (1.0 - min(min(gd.x, gd.y), 1.0)) * 0.025);
 
-    // --- city lights, only where it is dark
+    // --- city lights, only where it is dark. A soft gamma keeps small towns; a coarse mip level
+    // adds a halo around cities. Dim pixels are amber, bright ones white-gold.
     float l = texture(u_lights, tc).r;
-    vec3 amber = vec3(1.0, 0.72, 0.38);
-    col += amber * pow(l, 1.6) * 1.35 * night;
+    float halo = textureLod(u_lights, tc, 3.0).r;
+    vec3 tint = mix(vec3(1.0, 0.604, 0.235), vec3(1.0, 0.890, 0.690), min(l * 1.3, 1.0)); // #ff9a3c -> #ffe3b0
+    col += tint * (pow(l, 0.75) * 1.05 + halo * 0.9) * night;
 
     // Vignette + dither.
     vec2 q = px / u_res - 0.5;
-    col *= 1.0 - dot(q, q) * 0.55;
+    col *= 1.0 - dot(q, q) * 0.45;
     col += (hash(px) - 0.5) / 255.0;
     frag = vec4(col, 1.0);
 }

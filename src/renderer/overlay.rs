@@ -1,16 +1,34 @@
-//! Everything drawn on top of the map: event markers and labels, the event card, the clock and
-//! the attribution line. Returns hit regions so the app can handle hover and clicks.
+//! Everything drawn on top of the map: event markers and labels, the callout (a headline card set
+//! in the nearest open water and joined to its marker by a leader line), the clock and the
+//! attribution line. Returns hit regions so the app can handle hover and clicks.
+//!
+//! Sizes are in 1080p design pixels and scaled by `s`. Colours follow the "Ephemeris Nocturne"
+//! design system.
 
-use super::map::View;
+use super::map::{LandGrid, View};
 use super::text::Weight;
 use super::ui::{Color, Rect, TextStyle, Ui};
 use crate::dedup::Event;
 use time::{OffsetDateTime, UtcOffset};
 
 /// Number of events that get a text label next to their marker.
-const LABELED: usize = 6;
-/// Article lines listed in the card.
-const CARD_ARTICLES: usize = 4;
+const LABELED: usize = 5;
+/// Further articles listed under the headline.
+const CARD_ARTICLES: usize = 3;
+/// Callout widths tried, widest first (design px).
+const CARD_WIDTHS: [f32; 2] = [480.0, 420.0];
+/// Beyond this distance from its marker the callout gives up on open water and sits beside the place.
+const MAX_LEADER: f32 = 320.0;
+
+const INK: [f32; 3] = [0.953, 0.961, 0.969]; // #f3f5f7
+const INK_MUTED: [f32; 3] = [0.784, 0.827, 0.871]; // #c8d3de
+const INK_FAINT: [f32; 3] = [0.576, 0.631, 0.682]; // #93a1ae
+const MARKER: [f32; 3] = [0.902, 0.922, 0.933]; // #e6ebee
+const FOCUS: [f32; 3] = [1.0, 1.0, 1.0];
+const CREDIT: [f32; 3] = [0.490, 0.541, 0.584]; // #7d8a95
+/// Callout ground. The design's glass card uses a backdrop blur at 74%; without the blur we go a
+/// little more opaque so headlines stay legible over coastlines and lights.
+const CARD: [f32; 4] = [0.012, 0.031, 0.063, 0.82];
 
 pub struct Overlay<'a> {
     pub events: &'a [Event],
@@ -44,35 +62,167 @@ fn rgba(rgb: [f32; 3], a: f32) -> Color {
     [rgb[0], rgb[1], rgb[2], a]
 }
 
-const INK: [f32; 3] = [0.93, 0.95, 0.98];
-const MUTED: [f32; 3] = [0.66, 0.71, 0.78];
-const MARKER: [f32; 3] = [0.96, 0.97, 1.0];
-const ACCENT: [f32; 3] = [0.55, 0.80, 1.0];
-
-pub fn source_color(name: &str) -> [f32; 3] {
-    match name {
-        "NZZ" => [0.58, 0.78, 0.98],
-        "BBC" => [0.98, 0.62, 0.55],
-        "NYT" => [0.84, 0.85, 0.90],
-        _ => [0.65, 0.90, 0.72],
-    }
-}
-
-/// "12 MIN", "3 H", "2 D".
+/// "just now", "12 min", "3 h", "2 d".
 pub fn ago(now: i64, t: i64) -> String {
     let m = ((now - t).max(0) / 60) as u64;
     match m {
-        0..=1 => "JUST NOW".into(),
-        2..=59 => format!("{m} MIN AGO"),
-        60..=2879 => format!("{} H AGO", m / 60),
-        _ => format!("{} D AGO", m / 1440),
+        0..=1 => "just now".into(),
+        2..=59 => format!("{m} min"),
+        60..=2879 => format!("{} h", m / 60),
+        _ => format!("{} d", m / 1440),
     }
 }
 
-pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, o: &Overlay) -> Hits {
+/// Display name of a feed topic id ("top" -> "Top stories", "tech" -> "Tech").
+fn topic_name(id: &str) -> String {
+    match id {
+        "top" => "Top stories".into(),
+        _ => id.chars().take(1).flat_map(char::to_uppercase).chain(id.chars().skip(1)).collect(),
+    }
+}
+
+/// Marker radius from the event score: 3 px plus 0.9 px per point above 3.
+fn marker_radius(score: f64, s: f32) -> f32 {
+    (3.0 + 0.9 * (score as f32 - 3.0).clamp(0.0, 6.0)) * s
+}
+
+fn dist_to_rect(x: f32, y: f32, r: &Rect) -> f32 {
+    let dx = (r.x - x).max(0.0).max(x - (r.x + r.w));
+    let dy = (r.y - y).max(0.0).max(y - (r.y + r.h));
+    dx.hypot(dy)
+}
+
+/// Text styles and vertical rhythm of the callout.
+struct CardStyle {
+    s: f32,
+    place: TextStyle,
+    meta: TextStyle,
+    head: TextStyle,
+    dek: TextStyle,
+    code: TextStyle,
+    title: TextStyle,
+    age: TextStyle,
+}
+
+impl CardStyle {
+    fn new(s: f32) -> Self {
+        let t = |weight, size: f32, color| TextStyle { weight, size: (size * s).round(), color, tracking: 0.0 };
+        CardStyle {
+            s,
+            place: t(Weight::Semibold, 16.0, rgba(INK_MUTED, 1.0)),
+            meta: t(Weight::Regular, 16.0, rgba(INK_FAINT, 1.0)),
+            head: t(Weight::Serif, 34.0, rgba(INK, 1.0)),
+            dek: t(Weight::Regular, 16.0, rgba(INK_MUTED, 1.0)),
+            code: t(Weight::Semibold, 15.0, rgba(INK, 1.0)),
+            title: t(Weight::Regular, 15.0, rgba(INK_MUTED, 1.0)),
+            age: t(Weight::Regular, 15.0, rgba(INK_FAINT, 1.0)),
+        }
+    }
+    fn px(&self, v: f32) -> f32 {
+        v * self.s
+    }
+}
+
+struct Row {
+    code: String,
+    lines: Vec<String>,
+    age: String,
+    url: String,
+}
+
+/// The callout's text, wrapped for one width, and the height that results.
+struct CardLayout {
+    w: f32,
+    h: f32,
+    place: String,
+    meta: String,
+    head: Vec<String>,
+    head_url: String,
+    dek: Vec<String>,
+    rows: Vec<Row>,
+    more: usize,
+}
+
+fn layout(ui: &Ui, st: &CardStyle, e: &Event, o: &Overlay, w: f32) -> CardLayout {
+    let inner = w - 2.0 * st.px(28.0);
+    let lead = &e.articles[0];
+    let place = match e.location.country.as_str() {
+        c if c.is_empty() || !e.location.precise || c.eq_ignore_ascii_case(&e.location.name) => e.location.name.clone(),
+        c => format!("{}, {c}", e.location.name),
+    };
+    let when = match ago(o.now, lead.published) {
+        n if n == "just now" => n,
+        n => format!("{n} ago"),
+    };
+    let meta = if o.show_topics && !lead.topic.is_empty() { format!("{}, {}, {when}", topic_name(&lead.topic), lead.source) } else { format!("{}, {when}", lead.source) };
+    let head = ui.fonts.wrap(st.head.weight, st.head.size, &lead.title, inner, 3);
+    let dek = if lead.summary.is_empty() { Vec::new() } else { ui.fonts.wrap(st.dek.weight, st.dek.size, &lead.summary, inner, 2) };
+    let age_w = st.px(44.0);
+    let title_w = inner - st.px(40.0) - st.px(10.0) - st.px(10.0) - age_w;
+    let rows: Vec<Row> = e
+        .articles
+        .iter()
+        .skip(1)
+        .take(CARD_ARTICLES)
+        .map(|a| Row {
+            code: a.source.clone(),
+            lines: ui.fonts.wrap(st.title.weight, st.title.size, &a.title, title_w, 2),
+            age: ago(o.now, a.published),
+            url: a.url.clone(),
+        })
+        .collect();
+    let more = e.articles.len().saturating_sub(1 + CARD_ARTICLES);
+
+    let mut h = st.px(26.0) + st.px(22.0) + st.px(8.0) + st.px(40.0) * head.len() as f32;
+    if !dek.is_empty() {
+        h += st.px(12.0) + st.px(24.0) * dek.len() as f32;
+    }
+    if !rows.is_empty() {
+        h += st.px(16.0) + st.px(11.0);
+        h += rows.iter().map(|r| st.px(21.0) * r.lines.len() as f32 + st.px(10.0)).sum::<f32>();
+        if more > 0 {
+            h += st.px(26.0);
+        }
+    }
+    h += st.px(20.0);
+    CardLayout { w, h, place, meta, head, head_url: lead.url.clone(), dek, rows, more }
+}
+
+/// Cheapest spot for a `w` x `h` card near `a`: little land underneath, close to the marker, not
+/// hiding other markers, clear of `keep_out`. Distances are in design px.
+#[allow(clippy::too_many_arguments)]
+fn place(land: &LandGrid, a: (f32, f32), w: f32, h: f32, s: f32, screen: (f32, f32), avoid: &[(f32, f32)], keep_out: &[Rect], land_weight: f32) -> (Rect, f32) {
+    let (step, margin, gap) = (16.0 * s, 32.0 * s, 64.0);
+    let mut best = (Rect { x: margin, y: margin, w, h }, f32::MAX);
+    let mut y = margin;
+    while y + h <= screen.1 - margin {
+        let mut x = margin;
+        while x + w <= screen.0 - margin {
+            let r = Rect { x, y, w, h };
+            let d = dist_to_rect(a.0, a.1, &r) / s;
+            let mut c = land.fraction(x, y, w, h) * land_weight + d + d * d / 1200.0;
+            if d < gap {
+                c += (gap - d) * 40.0;
+            }
+            c += 180.0 * avoid.iter().filter(|p| dist_to_rect(p.0, p.1, &r) < 14.0 * s).count() as f32;
+            if keep_out.iter().any(|k| k.intersects(&r)) {
+                c += 1e5;
+            }
+            if c < best.1 {
+                best = (r, c);
+            }
+            x += step;
+        }
+        y += step;
+    }
+    best
+}
+
+pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, land: &LandGrid, o: &Overlay) -> Hits {
     let (w, h) = (view.width as f32, view.height as f32);
     let s = (h / 1080.0).min(w / 1920.0).max(0.5);
     let mut hits = Hits::default();
+    let margin = 64.0 * s;
 
     // ---- markers
     let mut placed: Vec<(f32, f32)> = Vec::new();
@@ -88,23 +238,26 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, o: &Overlay) -> Hits {
             k += 1;
         }
         placed.push((x, y));
-        let sources = e.sources().len() as f32;
-        let r = (2.2 + 0.9 * sources) * s;
+        let r = marker_radius(e.score, s);
         let age_h = (o.now - e.latest).max(0) as f32 / 3600.0;
         let fresh = (1.0 - age_h / 72.0).clamp(0.35, 1.0);
-        ui.glow(x, y, r * 2.6, rgba(ACCENT, 0.22 * fresh));
-        ui.disc(x, y, r, rgba(MARKER, 0.92 * fresh));
+        let focused = o.card.is_some_and(|(c, a)| c == i && a > 0.01);
+        if !focused {
+            ui.disc(x, y, r, rgba(MARKER, 0.85 * fresh));
+        }
         hits.markers.push((x, y, r.max(6.0 * s), i));
     }
 
-    // ---- highlight ring around the card's event
+    // ---- focus dot and ring
     if let Some((i, alpha)) = o.card {
         if let Some(&(x, y, _, _)) = hits.markers.iter().find(|m| m.3 == i) {
+            let r = marker_radius(o.events[i].score, s) + s;
             let t = o.ring.clamp(0.0, 1.0);
             let ease = 1.0 - (1.0 - t).powi(3);
-            // A ripple that expands and fades, then a calm steady ring.
-            ui.ring(x, y, (8.0 + 22.0 * ease) * s, 1.2 * s, rgba(ACCENT, 0.5 * (1.0 - ease) * alpha));
-            ui.ring(x, y, 9.0 * s, 1.3 * s, rgba(ACCENT, 0.8 * alpha * ease.max(0.3)));
+            ui.disc(x, y, r, rgba(FOCUS, 0.85 + 0.15 * alpha));
+            // A ripple that expands and fades, then a calm steady ring 9 px out.
+            ui.ring(x, y, r + (9.0 + 22.0 * ease) * s, 1.2 * s, rgba(FOCUS, 0.45 * (1.0 - ease) * alpha));
+            ui.ring(x, y, r + 9.0 * s, 1.5 * s, rgba(FOCUS, 0.9 * alpha * ease.max(0.3)));
         }
     }
 
@@ -113,159 +266,153 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, o: &Overlay) -> Hits {
         return hits;
     }
 
-    // ---- labels for the top events
-    let label = TextStyle { weight: Weight::Medium, size: (10.5 * s).round(), color: rgba(MUTED, 0.75), tracking: 1.4 * s };
+    // ---- clock (top right) and credits (bottom right): laid out first so the callout avoids them
+    let mut keep_out: Vec<Rect> = Vec::new();
+    let clock = o.show_clock.then(|| {
+        let local = OffsetDateTime::from_unix_timestamp(o.now).unwrap_or(OffsetDateTime::UNIX_EPOCH).to_offset(o.utc_offset);
+        let time_text = format!("{:02}:{:02}", local.hour(), local.minute());
+        let date_text = format!("{} {} {}", local.weekday(), local.day(), local.month());
+        let big = TextStyle { weight: Weight::Serif, size: (72.0 * s).round(), color: rgba(INK, 0.95), tracking: 0.0 };
+        let small = TextStyle { weight: Weight::Regular, size: (17.0 * s).round(), color: rgba(INK_MUTED, 0.9), tracking: 0.0 };
+        let tw = ui.fonts.measure(big.weight, big.size, 0.0, &time_text);
+        let dw = ui.fonts.measure(small.weight, small.size, 0.0, &date_text);
+        let base = 52.0 * s + big.size * 0.72;
+        keep_out.push(Rect { x: w - margin - tw.max(dw) - 16.0 * s, y: 0.0, w: tw.max(dw) + margin + 16.0 * s, h: base + 40.0 * s });
+        (time_text, date_text, big, small, tw, dw, base)
+    });
+    let credit = TextStyle { weight: Weight::Regular, size: (13.0 * s).round(), color: rgba(CREDIT, 1.0), tracking: 0.0 };
+    let credit_text = format!("{}   Lights: NASA Black Marble   Map: Natural Earth", o.credits);
+    let cw = ui.fonts.measure(credit.weight, credit.size, 0.0, &credit_text);
+    keep_out.push(Rect { x: w - margin - cw - 8.0 * s, y: h - 40.0 * s - credit.size - 8.0 * s, w: cw + margin + 8.0 * s, h: 40.0 * s + credit.size + 8.0 * s });
+
+    // ---- callout layout and placement
+    let st = CardStyle::new(s);
+    let callout = o.card.filter(|(_, a)| *a > 0.01).map(|(i, alpha)| {
+        let e = &o.events[i];
+        let (ax, ay, _, _) = *hits.markers.iter().find(|m| m.3 == i).unwrap();
+        let avoid: Vec<(f32, f32)> = hits.markers.iter().filter(|m| m.3 != i).map(|m| (m.0, m.1)).collect();
+        let mut best: Option<(CardLayout, Rect, f32)> = None;
+        for cw in CARD_WIDTHS {
+            let lay = layout(ui, &st, e, o, (cw * s).min(w * 0.45));
+            let (r, c) = place(land, (ax, ay), lay.w, lay.h, s, (w, h), &avoid, &keep_out, 4000.0);
+            if best.as_ref().is_none_or(|b| c < b.2) {
+                best = Some((lay, r, c));
+            }
+        }
+        let (lay, mut rect, _) = best.unwrap();
+        if dist_to_rect(ax, ay, &rect) / s > MAX_LEADER {
+            // No open water nearby (crowded Europe): sit beside the place, over land.
+            rect = place(land, (ax, ay), lay.w, lay.h, s, (w, h), &avoid, &keep_out, 300.0).0;
+        }
+        (lay, rect, (ax, ay), alpha)
+    });
+
+    // ---- labels for the top events (sentence case, on whichever side is free)
+    let label = TextStyle { weight: Weight::Regular, size: (15.0 * s).round(), color: rgba(INK_MUTED, 0.9), tracking: 0.0 };
     let mut taken: Vec<Rect> = hits.markers.iter().map(|&(x, y, r, _)| Rect { x: x - r, y: y - r, w: 2.0 * r, h: 2.0 * r }).collect();
+    taken.extend(keep_out.iter().copied());
+    if let Some((_, r, _, _)) = &callout {
+        taken.push(*r);
+    }
     for &(x, y, _, i) in hits.markers.iter().take(LABELED) {
         if o.card.is_some_and(|(c, a)| c == i && a > 0.05) {
-            continue; // the card already names it
+            continue; // the callout already names it
         }
-        let text = o.events[i].location.name.to_uppercase();
-        let tw = ui.fonts.measure(label.weight, label.size, label.tracking, &text);
+        let text = &o.events[i].location.name;
+        let tw = ui.fonts.measure(label.weight, label.size, 0.0, text);
         let th = label.size;
-        let candidates = [(x + 9.0 * s, y + th * 0.35), (x - 9.0 * s - tw, y + th * 0.35)];
-        for (lx, ly) in candidates {
-            let r = Rect { x: lx - 2.0, y: ly - th, w: tw + 4.0, h: th + 4.0 };
+        let off = 12.0 * s + marker_radius(o.events[i].score, s);
+        for lx in [x + off, x - off - tw] {
+            let r = Rect { x: lx - 2.0, y: y - th * 0.7, w: tw + 4.0, h: th * 1.3 };
             if r.x > 8.0 && r.x + r.w < w - 8.0 && !taken.iter().any(|t| t.intersects(&r)) {
-                ui.text(gl, label, lx, ly, &text);
+                ui.text(gl, label, lx, y + th * 0.35, text);
                 taken.push(r);
                 break;
             }
         }
     }
 
-    // ---- event card
-    if let Some((i, alpha)) = o.card.filter(|(_, a)| *a > 0.01) {
-        let e = &o.events[i];
-        let margin = 44.0 * s;
-        let pad = 22.0 * s;
-        let card_w = (560.0 * s).min(w * 0.4);
-        let inner = card_w - 2.0 * pad;
-
-        let meta = TextStyle { weight: Weight::Medium, size: (10.5 * s).round(), color: rgba(ACCENT, 0.85 * alpha), tracking: 1.5 * s };
-        let head = TextStyle { weight: Weight::Medium, size: (23.0 * s).round(), color: rgba(INK, alpha), tracking: 0.0 };
-        let body = TextStyle { weight: Weight::Regular, size: (14.0 * s).round(), color: rgba(MUTED, 0.85 * alpha), tracking: 0.0 };
-        let chip = TextStyle { weight: Weight::Medium, size: (10.0 * s).round(), color: [0.0; 4], tracking: 1.2 * s };
-        let item = TextStyle { weight: Weight::Regular, size: (13.0 * s).round(), color: rgba(INK, 0.72 * alpha), tracking: 0.0 };
-
-        let lead = &e.articles[0];
-        let place = e.location.name.to_uppercase();
-        let meta_text = match e.location.country.as_str() {
-            c if c.is_empty() || !e.location.precise || c.eq_ignore_ascii_case(&e.location.name) => place,
-            c => format!("{place}  ·  {}", c.to_uppercase()),
-        };
-        let lead_meta = if o.show_topics && !lead.topic.is_empty() {
-            format!("{}  ·  {}  ·  {}", lead.topic.to_uppercase(), lead.source, ago(o.now, lead.published))
+    // ---- callout: leader, card, text
+    if let Some((lay, card, (ax, ay), alpha)) = callout {
+        let attach = card.y + st.px(26.0) + st.px(11.0);
+        let (tx, ty) = if ax < card.x {
+            (card.x, attach)
+        } else if ax > card.x + card.w {
+            (card.x + card.w, attach)
         } else {
-            format!("{}  ·  {}", lead.source, ago(o.now, lead.published))
+            (ax, if ay < card.y { card.y } else { card.y + card.h })
         };
-        let head_lines = ui.fonts.wrap(head.weight, head.size, &lead.title, inner, 3);
-        let body_lines = if lead.summary.is_empty() { Vec::new() } else { ui.fonts.wrap(body.weight, body.size, &lead.summary, inner, 2) };
-        // The lead article is the headline itself; the list shows the other reports of this event.
-        let others: Vec<_> = e.articles.iter().skip(1).take(CARD_ARTICLES).collect();
-        let hidden = e.articles.len().saturating_sub(1 + CARD_ARTICLES);
+        let len = (tx - ax).hypot(ty - ay).max(1.0);
+        let inset = 16.0 * s;
+        ui.line(ax + (tx - ax) / len * inset, ay + (ty - ay) / len * inset, tx, ty, 1.25 * s, rgba(FOCUS, 0.75 * alpha));
 
-        let head_lh = head.size * 1.22;
-        let body_lh = body.size * 1.45;
-        let item_lh = item.size * 1.9;
-        let mut height = pad + meta.size + 12.0 * s + head_lh * head_lines.len() as f32;
-        if !body_lines.is_empty() {
-            height += 8.0 * s + body_lh * body_lines.len() as f32;
-        }
-        if others.is_empty() {
-            height += pad * 0.6;
-        } else {
-            height += 16.0 * s + item_lh * others.len() as f32 + pad * 0.6;
-        }
-        if hidden > 0 {
-            height += item_lh * 0.8;
-        }
-
-        let card = Rect { x: margin, y: h - margin - height, w: card_w, h: height };
-        ui.rect(Rect { x: card.x - 1.0, y: card.y - 1.0, w: card.w + 2.0, h: card.h + 2.0 }, 15.0 * s, [1.0, 1.0, 1.0, 0.07 * alpha]);
-        ui.rect(card, 14.0 * s, [0.028, 0.036, 0.050, 0.80 * alpha]);
+        ui.rect(Rect { x: card.x - 1.0, y: card.y - 1.0, w: card.w + 2.0, h: card.h + 2.0 }, 11.0 * s, [1.0, 1.0, 1.0, 0.10 * alpha]);
+        ui.rect(card, 10.0 * s, [CARD[0], CARD[1], CARD[2], CARD[3] * alpha]);
         hits.card = Some(card);
 
+        let fade = |t: TextStyle| TextStyle { color: [t.color[0], t.color[1], t.color[2], t.color[3] * alpha], ..t };
+        let (pad, inner) = (st.px(28.0), card.w - 2.0 * st.px(28.0));
         let x = card.x + pad;
-        let mut y = card.y + pad + meta.size;
-        ui.text(gl, meta, x, y, &meta_text);
-        let lead_style = TextStyle { color: rgba(source_color(&lead.source), 0.9 * alpha), ..meta };
-        let lw = ui.fonts.measure(lead_style.weight, lead_style.size, lead_style.tracking, &lead_meta);
-        ui.text(gl, lead_style, x + inner - lw, y, &lead_meta);
+        // Text sits on a baseline at roughly the middle of its line box plus a third of the size.
+        let base = |top: f32, line: f32, size: f32| top + line / 2.0 + size * 0.35;
+
+        let mut y = card.y + st.px(26.0);
+        let pw = ui.text(gl, fade(st.place), x, base(y, st.px(22.0), st.place.size), &lay.place);
+        ui.text(gl, fade(st.meta), x + pw + st.px(12.0), base(y, st.px(22.0), st.meta.size), &lay.meta);
+        y += st.px(22.0) + st.px(8.0);
         let head_top = y;
-        y += 12.0 * s;
-        for line in &head_lines {
-            y += head_lh;
-            ui.text(gl, head, x, y - head_lh * 0.22, line);
+        for line in &lay.head {
+            ui.text(gl, fade(st.head), x, base(y, st.px(40.0), st.head.size), line);
+            y += st.px(40.0);
         }
-        hits.links.push((Rect { x: card.x, y: head_top, w: card.w, h: y - head_top }, lead.url.clone()));
-        if !body_lines.is_empty() {
-            y += 8.0 * s;
-            for line in &body_lines {
-                y += body_lh;
-                ui.text(gl, body, x, y - body_lh * 0.3, line);
+        hits.links.push((Rect { x: card.x, y: head_top, w: card.w, h: y - head_top }, lay.head_url.clone()));
+        if !lay.dek.is_empty() {
+            y += st.px(12.0);
+            for line in &lay.dek {
+                ui.text(gl, fade(st.dek), x, base(y, st.px(24.0), st.dek.size), line);
+                y += st.px(24.0);
             }
         }
-        let chip_w = 44.0 * s;
-        if !others.is_empty() {
-            y += 10.0 * s;
-            ui.rect(Rect { x, y, w: inner, h: 1.0 }, 0.0, [1.0, 1.0, 1.0, 0.08 * alpha]);
-            y += 6.0 * s;
-        }
-        for (k, a) in others.iter().enumerate() {
-            let k = k + 1; // link 0 is the headline
-            let row = Rect { x: card.x, y, w: card.w, h: item_lh };
-            let hovered = o.hovered_link == Some(k);
-            if hovered {
-                ui.rect(Rect { x: card.x + 6.0 * s, y, w: card.w - 12.0 * s, h: item_lh }, 8.0 * s, [1.0, 1.0, 1.0, 0.05 * alpha]);
+        if !lay.rows.is_empty() {
+            y += st.px(16.0);
+            ui.rect(Rect { x, y, w: inner, h: 1.0 }, 0.0, [1.0, 1.0, 1.0, 0.10 * alpha]);
+            y += st.px(11.0);
+            let title_x = x + st.px(40.0) + st.px(10.0);
+            for (k, row) in lay.rows.iter().enumerate() {
+                let k = k + 1; // link 0 is the headline
+                let row_h = st.px(21.0) * row.lines.len() as f32 + st.px(10.0);
+                let hovered = o.hovered_link == Some(k);
+                if hovered {
+                    ui.rect(Rect { x: x - st.px(8.0), y, w: inner + st.px(16.0), h: row_h }, 2.0 * s, [1.0, 1.0, 1.0, 0.08 * alpha]);
+                }
+                let mut ly = y + st.px(5.0);
+                ui.text(gl, fade(st.code), x, base(ly, st.px(21.0), st.code.size), &row.code);
+                let aw = ui.fonts.measure(st.age.weight, st.age.size, 0.0, &row.age);
+                ui.text(gl, fade(st.age), x + inner - aw, base(ly, st.px(21.0), st.age.size), &row.age);
+                let title = if hovered { TextStyle { color: rgba(INK, 1.0), ..st.title } } else { st.title };
+                for line in &row.lines {
+                    let bl = base(ly, st.px(21.0), st.title.size);
+                    let lw = ui.text(gl, fade(title), title_x, bl, line);
+                    if hovered {
+                        ui.rect(Rect { x: title_x, y: bl + 3.0 * s, w: lw, h: s.max(1.0) }, 0.0, rgba(INK, 0.8 * alpha));
+                    }
+                    ly += st.px(21.0);
+                }
+                hits.links.push((Rect { x: card.x, y, w: card.w, h: row_h }, row.url.clone()));
+                y += row_h;
             }
-            let base = y + item_lh * 0.66;
-            let c = source_color(&a.source);
-            ui.text(gl, TextStyle { color: rgba(c, 0.95 * alpha), ..chip }, x, base, &a.source);
-            let t = ui.fonts.ellipsize(item.weight, item.size, &a.title, inner - chip_w - 70.0 * s);
-            let style = if hovered { TextStyle { color: rgba(INK, alpha), ..item } } else { item };
-            ui.text(gl, style, x + chip_w, base, &t);
-            let when = ago(o.now, a.published).replace(" AGO", "");
-            let ww = ui.fonts.measure(chip.weight, chip.size, chip.tracking, &when);
-            ui.text(gl, TextStyle { color: rgba(MUTED, 0.6 * alpha), ..chip }, x + inner - ww, base, &when);
-            hits.links.push((row, a.url.clone()));
-            y += item_lh;
-        }
-        if hidden > 0 {
-            let more = format!("+{hidden} MORE");
-            ui.text(gl, TextStyle { color: rgba(MUTED, 0.6 * alpha), ..chip }, x + chip_w, y + item_lh * 0.5, &more);
+            if lay.more > 0 {
+                ui.text(gl, fade(st.age), title_x, base(y, st.px(26.0), st.age.size), &format!("+{} more", lay.more));
+            }
         }
     }
 
-    // ---- clock (top right)
-    if o.show_clock {
-        let local = OffsetDateTime::from_unix_timestamp(o.now).unwrap_or(OffsetDateTime::UNIX_EPOCH).to_offset(o.utc_offset);
-        let time_text = format!("{:02}:{:02}", local.hour(), local.minute());
-        let off = o.utc_offset.whole_minutes();
-        let zone = if off == 0 { "UTC".to_string() } else if off % 60 == 0 { format!("UTC{:+}", off / 60) } else { format!("UTC{:+}:{:02}", off / 60, (off % 60).abs()) };
-        let date_text = format!(
-            "{} {} {}  ·  {}",
-            &local.weekday().to_string()[..3],
-            local.day(),
-            &local.month().to_string()[..3],
-            zone
-        )
-        .to_uppercase();
-        let big = TextStyle { weight: Weight::Regular, size: (34.0 * s).round(), color: rgba(INK, 0.82), tracking: 0.5 * s };
-        let small = TextStyle { weight: Weight::Medium, size: (10.0 * s).round(), color: rgba(MUTED, 0.6), tracking: 1.5 * s };
-        let margin = 44.0 * s;
-        let tw = ui.fonts.measure(big.weight, big.size, big.tracking, &time_text);
-        let dw = ui.fonts.measure(small.weight, small.size, small.tracking, &date_text);
-        let right = w - margin;
-        ui.text(gl, big, right - tw, margin + big.size * 0.8, &time_text);
-        ui.text(gl, small, right - dw, margin + big.size * 0.8 + 20.0 * s, &date_text);
+    // ---- clock and credits
+    if let Some((time_text, date_text, big, small, tw, dw, base)) = clock {
+        ui.text(gl, big, w - margin - tw, base, &time_text);
+        ui.text(gl, small, w - margin - dw, base + 6.0 * s + 22.0 * s, &date_text);
     }
-
-    // ---- attribution (bottom right)
-    let credit = TextStyle { weight: Weight::Regular, size: (10.0 * s).round(), color: rgba(MUTED, 0.38), tracking: 0.6 * s };
-    let text = format!("{}   ·   Night lights NASA Black Marble   ·   Natural Earth", o.credits);
-    let cw = ui.fonts.measure(credit.weight, credit.size, credit.tracking, &text);
-    ui.text(gl, credit, w - 44.0 * s - cw, h - 30.0 * s, &text);
+    ui.text(gl, credit, w - margin - cw, h - 40.0 * s, &credit_text);
 
     ui.flush(gl, w, h);
     hits

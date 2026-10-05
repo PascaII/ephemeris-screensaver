@@ -96,8 +96,27 @@ impl Ui {
         self.centered(cx, cy, r + thickness + 1.5, color, [3.0, r, thickness, 0.0]);
     }
 
-    pub fn glow(&mut self, cx: f32, cy: f32, sigma: f32, color: Color) {
-        self.centered(cx, cy, sigma * 3.0, color, [4.0, sigma, 0.0, 0.0]);
+    /// Anti-aliased straight line from (x0, y0) to (x1, y1).
+    pub fn line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, thickness: f32, color: Color) {
+        let len = (x1 - x0).hypot(y1 - y0);
+        if len < 0.5 {
+            return;
+        }
+        let (dx, dy) = ((x1 - x0) / len, (y1 - y0) / len);
+        let (e, h) = (1.0, thickness / 2.0 + 1.0);
+        // uv = (distance along the line, distance across it), in pixels.
+        let corners = [
+            (x0 - dx * e - dy * h, y0 - dy * e + dx * h, -e, h),
+            (x1 + dx * e - dy * h, y1 + dy * e + dx * h, len + e, h),
+            (x1 + dx * e + dy * h, y1 + dy * e - dx * h, len + e, -h),
+            (x0 - dx * e + dy * h, y0 - dy * e - dx * h, -e, -h),
+        ];
+        for i in [0, 1, 2, 0, 2, 3] {
+            let (x, y, u, v) = corners[i];
+            self.verts.extend_from_slice(&[x, y, u, v]);
+            self.verts.extend_from_slice(&color);
+            self.verts.extend_from_slice(&[5.0, len, thickness, 0.0]);
+        }
     }
 
     /// Draw `s` with its baseline at `y`; returns the advance width.

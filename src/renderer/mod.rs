@@ -38,7 +38,13 @@ pub struct Renderer {
     pub window: Window,
     pub view: View,
     center_lon: f64,
+    land_mask: map::LandMask,
+    /// Land coverage per screen cell, for placing the callout over water.
+    land: map::LandGrid,
 }
+
+/// Cell size (px) of the land grid used for callout placement.
+const LAND_CELL: f32 = 16.0;
 
 /// Create a window with a current OpenGL 3.3 core context.
 fn gl_window(
@@ -99,13 +105,18 @@ impl Renderer {
         let map = unsafe { map::MapPass::new(&gl, window.current_monitor().map(|m| m.size().width).unwrap_or(4096)) };
         let ui = unsafe { ui::Ui::new(&gl) };
         let size = window.inner_size();
+        let view = View::new(size.width.max(1) as f64, size.height.max(1) as f64, center_lon);
+        let land_mask = map::LandMask::load();
+        let land = map::LandGrid::new(&land_mask, &view, LAND_CELL);
         Renderer {
             gl,
             map,
             ui,
             surface,
             context,
-            view: View::new(size.width.max(1) as f64, size.height.max(1) as f64, center_lon),
+            view,
+            land_mask,
+            land,
             window,
             center_lon,
         }
@@ -115,6 +126,7 @@ impl Renderer {
         let (w, h) = (NonZeroU32::new(width.max(1)).unwrap(), NonZeroU32::new(height.max(1)).unwrap());
         self.surface.resize(&self.context, w, h);
         self.view = View::new(w.get() as f64, h.get() as f64, self.center_lon);
+        self.land = map::LandGrid::new(&self.land_mask, &self.view, LAND_CELL);
     }
 
     pub fn draw(&mut self, frame: &Frame) -> Hits {
@@ -127,7 +139,7 @@ impl Renderer {
             gl.clear(glow::COLOR_BUFFER_BIT);
             self.map.draw(gl, &self.view, frame.sun);
         }
-        overlay::draw(&mut self.ui, &self.gl, &self.view, &frame.overlay)
+        overlay::draw(&mut self.ui, &self.gl, &self.view, &self.land, &frame.overlay)
     }
 
     pub fn present(&self) {

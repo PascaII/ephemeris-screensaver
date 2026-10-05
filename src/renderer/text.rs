@@ -1,18 +1,24 @@
-//! Text: two embedded Inter weights rasterised on demand into one R8 glyph atlas.
+//! Text: three embedded faces (Source Sans 3 Regular/SemiBold, Source Serif 4 Display SemiBold)
+//! rasterised on demand into one R8 glyph atlas.
 
 use glow::HasContext;
 use std::collections::HashMap;
 
-static REGULAR: &[u8] = include_bytes!("../../assets/Inter-Regular.otf");
-static MEDIUM: &[u8] = include_bytes!("../../assets/Inter-Medium.otf");
+static REGULAR: &[u8] = include_bytes!("../../assets/SourceSans3-Regular.otf");
+static SEMIBOLD: &[u8] = include_bytes!("../../assets/SourceSans3-Semibold.otf");
+static SERIF: &[u8] = include_bytes!("../../assets/SourceSerif4Display-Semibold.otf");
 
 const ATLAS: i32 = 1024;
 const PAD: i32 = 1;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Weight {
+    /// Source Sans 3 Regular: article titles, dates, labels, credits.
     Regular = 0,
-    Medium = 1,
+    /// Source Sans 3 SemiBold: place names and source codes.
+    Semibold = 1,
+    /// Source Serif 4 Display SemiBold: headline and clock.
+    Serif = 2,
 }
 
 #[derive(Clone, Copy)]
@@ -27,7 +33,7 @@ pub struct Glyph {
 }
 
 pub struct Fonts {
-    fonts: [fontdue::Font; 2],
+    fonts: [fontdue::Font; 3],
     glyphs: HashMap<(Weight, u32, char), Glyph>,
     pub texture: glow::Texture,
     cursor: (i32, i32),
@@ -53,7 +59,7 @@ impl Fonts {
         for (p, v) in [(glow::TEXTURE_MIN_FILTER, glow::LINEAR), (glow::TEXTURE_MAG_FILTER, glow::LINEAR)] {
             gl.tex_parameter_i32(glow::TEXTURE_2D, p, v as i32);
         }
-        Fonts { fonts: [load(REGULAR), load(MEDIUM)], glyphs: HashMap::new(), texture, cursor: (0, 0), row_h: 0 }
+        Fonts { fonts: [load(REGULAR), load(SEMIBOLD), load(SERIF)], glyphs: HashMap::new(), texture, cursor: (0, 0), row_h: 0 }
     }
 
     pub fn kern(&self, weight: Weight, size: f32, a: char, b: char) -> f32 {
@@ -161,6 +167,11 @@ impl Fonts {
         while !out.is_empty() && self.measure(weight, size, 0.0, &format!("{out}…")) > max_w {
             out.pop();
         }
-        format!("{}…", out.trim_end_matches([' ', ',', ':', '–', '-']))
+        let out = out.trim_end_matches([' ', ',', ':', '–', '-']);
+        // A cut right after a full sentence reads better without the ellipsis.
+        if out.ends_with(['.', '!', '?']) {
+            return out.to_string();
+        }
+        format!("{out}…")
     }
 }

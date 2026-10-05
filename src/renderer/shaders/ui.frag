@@ -4,7 +4,7 @@
 //   mode 1: glyph         (alpha from the R8 atlas)
 //   mode 2: disc          (param.y = radius)
 //   mode 3: ring          (param.y = radius, param.z = thickness)
-//   mode 4: glow          (param.y = gaussian sigma)
+//   mode 5: line          (uv = along/across in px, param.y = length, param.z = thickness)
 
 uniform sampler2D u_atlas;
 
@@ -27,7 +27,8 @@ void main() {
     } else if (mode == 3) {
         a = clamp(v_param.z * 0.5 + 0.5 - abs(length(v_uv) - v_param.y), 0.0, 1.0);
     } else {
-        a = exp(-dot(v_uv, v_uv) / (v_param.y * v_param.y));
+        a = clamp(v_param.z * 0.5 + 0.5 - abs(v_uv.y), 0.0, 1.0)
+          * clamp(min(v_uv.x, v_param.y - v_uv.x) + 0.5, 0.0, 1.0);
     }
     frag = vec4(v_color.rgb, v_color.a * a);
 }

@@ -76,7 +76,7 @@ pub struct App {
 
 impl App {
     pub fn new(opts: Options, config: Config, utc_offset: UtcOffset, events: Vec<Event>) -> Self {
-        let credits = config.source_order().join(" · ");
+        let credits = config.source_order().join(", ");
         let now = Instant::now();
         let mut app = App {
             opts,
