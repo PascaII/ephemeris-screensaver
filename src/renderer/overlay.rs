@@ -15,6 +15,10 @@ use time::{OffsetDateTime, UtcOffset};
 const LABELED: usize = 5;
 /// Further articles listed under the headline.
 const CARD_ARTICLES: usize = 3;
+/// Headline size, line height (design px) and the most lines shown before an ellipsis.
+const HEAD_SIZE: f32 = 28.0;
+const HEAD_LINE: f32 = 34.0;
+const HEAD_LINES: usize = 4;
 /// Callout widths tried, widest first (design px).
 const CARD_WIDTHS: [f32; 2] = [480.0, 420.0];
 /// Beyond this distance from its marker the callout gives up on open water and sits beside the place.
@@ -111,7 +115,7 @@ impl CardStyle {
             s,
             place: t(Weight::Semibold, 16.0, rgba(INK_MUTED, 1.0)),
             meta: t(Weight::Regular, 16.0, rgba(INK_FAINT, 1.0)),
-            head: t(Weight::Serif, 34.0, rgba(INK, 1.0)),
+            head: t(Weight::Serif, HEAD_SIZE, rgba(INK, 1.0)),
             dek: t(Weight::Regular, 16.0, rgba(INK_MUTED, 1.0)),
             code: t(Weight::Semibold, 15.0, rgba(INK, 1.0)),
             title: t(Weight::Regular, 15.0, rgba(INK_MUTED, 1.0)),
@@ -155,7 +159,7 @@ fn layout(ui: &Ui, st: &CardStyle, e: &Event, o: &Overlay, w: f32) -> CardLayout
         n => format!("{n} ago"),
     };
     let meta = if o.show_topics && !lead.topic.is_empty() { format!("{}, {}, {when}", topic_name(&lead.topic), lead.source) } else { format!("{}, {when}", lead.source) };
-    let head = ui.fonts.wrap(st.head.weight, st.head.size, &lead.title, inner, 3);
+    let head = ui.fonts.wrap(st.head.weight, st.head.size, &lead.title, inner, HEAD_LINES);
     let dek = if lead.summary.is_empty() { Vec::new() } else { ui.fonts.wrap(st.dek.weight, st.dek.size, &lead.summary, inner, 2) };
     let age_w = st.px(44.0);
     let title_w = inner - st.px(40.0) - st.px(10.0) - st.px(10.0) - age_w;
@@ -173,7 +177,7 @@ fn layout(ui: &Ui, st: &CardStyle, e: &Event, o: &Overlay, w: f32) -> CardLayout
         .collect();
     let more = e.articles.len().saturating_sub(1 + CARD_ARTICLES);
 
-    let mut h = st.px(26.0) + st.px(22.0) + st.px(8.0) + st.px(40.0) * head.len() as f32;
+    let mut h = st.px(26.0) + st.px(22.0) + st.px(8.0) + st.px(HEAD_LINE) * head.len() as f32;
     if !dek.is_empty() {
         h += st.px(12.0) + st.px(24.0) * dek.len() as f32;
     }
@@ -362,8 +366,8 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, land: &LandGrid, o: &O
         y += st.px(22.0) + st.px(8.0);
         let head_top = y;
         for line in &lay.head {
-            ui.text(gl, fade(st.head), x, base(y, st.px(40.0), st.head.size), line);
-            y += st.px(40.0);
+            ui.text(gl, fade(st.head), x, base(y, st.px(HEAD_LINE), st.head.size), line);
+            y += st.px(HEAD_LINE);
         }
         hits.links.push((Rect { x: card.x, y: head_top, w: card.w, h: y - head_top }, lay.head_url.clone()));
         if !lay.dek.is_empty() {
