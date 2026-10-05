@@ -22,7 +22,12 @@ pub struct Config {
     pub exit_on_mouse_move: bool,
     /// Skip articles whose NZZ-style kicker starts with one of these (opinion, podcasts, ads).
     pub skip_kickers: Vec<String>,
-    pub sources: Vec<SourceConfig>,
+    /// News topics to show; see `TOPICS`.
+    pub topics: Vec<String>,
+    /// Built-in publishers to use, in order of preference (the first one's headline leads a card).
+    pub publishers: Vec<String>,
+    /// Additional RSS feeds beyond the built-in catalog.
+    pub extra_feeds: Vec<SourceConfig>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -32,9 +37,63 @@ pub struct SourceConfig {
     pub url: String,
     /// "de" or "en"; used by geolocation and deduplication.
     pub lang: String,
+    /// Topic label of this feed (e.g. "sport"); empty if unknown.
+    #[serde(default)]
+    pub topic: String,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
+
+/// Topics that the built-in catalog knows, in display order.
+pub const TOPICS: [&str; 8] = ["top", "world", "politics", "business", "sport", "science", "tech", "culture"];
+
+/// Built-in feeds: (publisher, language, [(topic, url)]).
+/// "politics" is domestic politics for each publisher (Swiss, UK and US respectively).
+const CATALOG: &[(&str, &str, &[(&str, &str)])] = &[
+    ("NZZ", "de", &[
+        ("top", "https://www.nzz.ch/startseite.rss"),
+        ("world", "https://www.nzz.ch/international.rss"),
+        ("politics", "https://www.nzz.ch/schweiz.rss"),
+        ("business", "https://www.nzz.ch/wirtschaft.rss"),
+        ("sport", "https://www.nzz.ch/sport.rss"),
+        ("science", "https://www.nzz.ch/wissenschaft.rss"),
+        ("tech", "https://www.nzz.ch/technologie.rss"),
+        ("culture", "https://www.nzz.ch/feuilleton.rss"),
+    ]),
+    ("BBC", "en", &[
+        ("top", "https://feeds.bbci.co.uk/news/rss.xml"),
+        ("world", "https://feeds.bbci.co.uk/news/world/rss.xml"),
+        ("politics", "https://feeds.bbci.co.uk/news/politics/rss.xml"),
+        ("business", "https://feeds.bbci.co.uk/news/business/rss.xml"),
+        ("sport", "https://feeds.bbci.co.uk/sport/rss.xml"),
+        ("science", "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"),
+        ("tech", "https://feeds.bbci.co.uk/news/technology/rss.xml"),
+        ("culture", "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"),
+    ]),
+    ("NYT", "en", &[
+        ("top", "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"),
+        ("world", "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"),
+        ("politics", "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml"),
+        ("business", "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"),
+        ("sport", "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml"),
+        ("science", "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml"),
+        ("tech", "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml"),
+        ("culture", "https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml"),
+    ]),
+];
+
+const HEADER: &str = "# Ephemeris screensaver settings. Restart the screensaver after editing.
+#
+# topics      any of: top, world, politics, business, sport, science, tech, culture
+#             (\"politics\" is domestic politics: Swiss for NZZ, UK for BBC, US for NYT)
+# publishers  any of: NZZ, BBC, NYT, in order of preference
+# extra feeds add more RSS feeds like this:
+#   [[extra_feeds]]
+#   name = \"Guardian\"
+#   url = \"https://www.theguardian.com/world/rss\"
+#   lang = \"en\"
+#   topic = \"world\"
+";
 
 fn yes() -> bool {
     true
@@ -42,12 +101,6 @@ fn yes() -> bool {
 
 impl Default for Config {
     fn default() -> Self {
-        let src = |name: &str, url: &str, lang: &str| SourceConfig {
-            name: name.into(),
-            url: url.into(),
-            lang: lang.into(),
-            enabled: true,
-        };
         Config {
             center_lon: 10.0,
             refresh_minutes: 60,
@@ -59,12 +112,9 @@ impl Default for Config {
             skip_kickers: ["KOMMENTAR", "GASTKOMMENTAR", "INTERVIEW", "PODCAST", "SPONSORED", "QUIZ", "NEWSLETTER"]
                 .map(String::from)
                 .to_vec(),
-            sources: vec![
-                src("NZZ", "https://www.nzz.ch/startseite.rss", "de"),
-                src("NZZ", "https://www.nzz.ch/international.rss", "de"),
-                src("BBC", "https://feeds.bbci.co.uk/news/world/rss.xml", "en"),
-                src("NYT", "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "en"),
-            ],
+            topics: vec!["top".into(), "world".into()],
+            publishers: vec!["NZZ".into(), "BBC".into(), "NYT".into()],
+            extra_feeds: Vec::new(),
         }
     }
 }
@@ -75,10 +125,23 @@ impl Config {
     pub fn load() -> Config {
         let path = config_path();
         match std::fs::read_to_string(&path) {
-            Ok(text) => toml::from_str(&text).unwrap_or_else(|e| {
-                eprintln!("ephemeris: ignoring invalid {}: {e}", path.display());
-                Config::default()
-            }),
+            Ok(text) => match toml::from_str::<Config>(&text) {
+                Ok(cfg) => {
+                    // Files from before topics existed list feeds under [[sources]]; rewrite them in
+                    // the new format, keeping all other settings.
+                    if text.contains("[[sources]]") {
+                        cfg.save();
+                    }
+                    for t in cfg.topics.iter().filter(|t| !TOPICS.contains(&t.as_str())) {
+                        eprintln!("ephemeris: unknown topic {t:?} (known: {})", TOPICS.join(", "));
+                    }
+                    cfg
+                }
+                Err(e) => {
+                    eprintln!("ephemeris: ignoring invalid {}: {e}", path.display());
+                    Config::default()
+                }
+            },
             Err(_) => {
                 let cfg = Config::default();
                 cfg.save();
@@ -92,8 +155,43 @@ impl Config {
         if let Some(dir) = path.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
-        let text = toml::to_string_pretty(self).unwrap_or_default();
-        let _ = std::fs::write(&path, format!("# Ephemeris screensaver settings\n\n{text}"));
+        let text = toml::to_string(self).unwrap_or_default();
+        let _ = std::fs::write(&path, format!("{HEADER}\n{text}"));
+    }
+
+    /// All feeds to fetch: the catalog feeds for the selected publishers and topics, then extras.
+    /// Order matters: when one article appears in several feeds, the first feed's topic wins.
+    pub fn feeds(&self) -> Vec<SourceConfig> {
+        let mut out = Vec::new();
+        for topic in &self.topics {
+            for publisher in &self.publishers {
+                let Some((name, lang, feeds)) = CATALOG.iter().find(|(n, _, _)| n.eq_ignore_ascii_case(publisher)) else {
+                    continue;
+                };
+                for (t, url) in feeds.iter().filter(|(t, _)| t.eq_ignore_ascii_case(topic)) {
+                    out.push(SourceConfig {
+                        name: name.to_string(),
+                        url: url.to_string(),
+                        lang: lang.to_string(),
+                        topic: t.to_string(),
+                        enabled: true,
+                    });
+                }
+            }
+        }
+        out.extend(self.extra_feeds.iter().filter(|f| f.enabled).cloned());
+        out
+    }
+
+    /// Source names in order of preference (publishers first, then extra feeds).
+    pub fn source_order(&self) -> Vec<String> {
+        let mut order: Vec<String> = Vec::new();
+        for f in self.feeds() {
+            if !order.contains(&f.name) {
+                order.push(f.name);
+            }
+        }
+        order
     }
 
     pub fn refresh_interval(&self) -> std::time::Duration {
@@ -122,4 +220,37 @@ fn app_dir(win_var: &str, mac_rel: &str, xdg_var: &str, xdg_rel: &str) -> PathBu
         env(xdg_var).unwrap_or_else(|| home.join(xdg_rel))
     };
     base.join("Ephemeris")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expands_topics_and_publishers() {
+        let cfg: Config = toml::from_str("topics = [\"sport\"]\npublishers = [\"BBC\", \"nzz\"]").unwrap();
+        let feeds = cfg.feeds();
+        let urls: Vec<&str> = feeds.iter().map(|f| f.url.as_str()).collect();
+        assert_eq!(urls, ["https://feeds.bbci.co.uk/sport/rss.xml", "https://www.nzz.ch/sport.rss"]);
+        assert_eq!(feeds[1].lang, "de");
+        assert_eq!(feeds[1].topic, "sport");
+        assert_eq!(cfg.source_order(), ["BBC", "NZZ"]);
+        assert_eq!(cfg.max_age_hours, 72, "unspecified settings keep their defaults");
+    }
+
+    #[test]
+    fn every_topic_exists_for_every_publisher() {
+        for (name, _, feeds) in CATALOG {
+            for t in TOPICS {
+                assert!(feeds.iter().any(|(ft, _)| *ft == t), "{name} lacks {t}");
+            }
+        }
+    }
+
+    #[test]
+    fn legacy_sources_are_ignored() {
+        let cfg: Config = toml::from_str("max_age_hours = 24\n[[sources]]\nname = \"NZZ\"\nurl = \"x\"\nlang = \"de\"").unwrap();
+        assert_eq!(cfg.max_age_hours, 24);
+        assert_eq!(cfg.feeds().len(), 6);
+    }
 }

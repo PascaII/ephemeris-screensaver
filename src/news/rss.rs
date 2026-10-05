@@ -28,6 +28,7 @@ pub fn parse(xml: &str, source: &SourceConfig) -> Vec<Article> {
                     item = Some(Article {
                         source: source.name.clone(),
                         lang: source.lang.clone(),
+                        topic: source.topic.clone(),
                         rank: articles.len() as u32,
                         ..Default::default()
                     });
@@ -142,7 +143,7 @@ mod tests {
     use super::*;
 
     fn source(name: &str, lang: &str) -> SourceConfig {
-        SourceConfig { name: name.into(), url: "test".into(), lang: lang.into(), enabled: true }
+        SourceConfig { name: name.into(), url: "test".into(), lang: lang.into(), topic: "world".into(), enabled: true }
     }
 
     #[test]

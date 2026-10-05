@@ -23,6 +23,8 @@ pub struct Overlay<'a> {
     pub now: i64,
     pub utc_offset: UtcOffset,
     pub show_clock: bool,
+    /// Label the card with the event's topic (useful when several topics are selected).
+    pub show_topics: bool,
     /// Source names for the attribution line.
     pub credits: &'a str,
     /// Markers only (tiny preview in the Screen Saver Settings dialog).
@@ -152,7 +154,11 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, o: &Overlay) -> Hits {
             c if c.is_empty() || !e.location.precise || c.eq_ignore_ascii_case(&e.location.name) => place,
             c => format!("{place}  ·  {}", c.to_uppercase()),
         };
-        let lead_meta = format!("{}  ·  {}", lead.source, ago(o.now, lead.published));
+        let lead_meta = if o.show_topics && !lead.topic.is_empty() {
+            format!("{}  ·  {}  ·  {}", lead.topic.to_uppercase(), lead.source, ago(o.now, lead.published))
+        } else {
+            format!("{}  ·  {}", lead.source, ago(o.now, lead.published))
+        };
         let head_lines = ui.fonts.wrap(head.weight, head.size, &lead.title, inner, 3);
         let body_lines = if lead.summary.is_empty() { Vec::new() } else { ui.fonts.wrap(body.weight, body.size, &lead.summary, inner, 2) };
         // The lead article is the headline itself; the list shows the other reports of this event.

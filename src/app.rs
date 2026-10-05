@@ -76,13 +76,7 @@ pub struct App {
 
 impl App {
     pub fn new(opts: Options, config: Config, utc_offset: UtcOffset, events: Vec<Event>) -> Self {
-        let mut credits: Vec<&str> = Vec::new();
-        for s in config.sources.iter().filter(|s| s.enabled) {
-            if !credits.contains(&s.name.as_str()) {
-                credits.push(&s.name);
-            }
-        }
-        let credits = credits.join(" · ");
+        let credits = config.source_order().join(" · ");
         let now = Instant::now();
         let mut app = App {
             opts,
@@ -197,6 +191,7 @@ impl App {
                 now: unix as i64,
                 utc_offset: self.utc_offset,
                 show_clock: self.config.show_clock,
+                show_topics: self.config.topics.len() > 1,
                 credits: &self.credits,
                 minimal,
             },

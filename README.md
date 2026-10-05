@@ -17,7 +17,10 @@ Built in Rust with a single OpenGL shader. It is one small `.scr` file, idles at
 - A key press or a click on the empty map ends the screensaver.
 - Without interaction, the most important events rotate through the card every few seconds.
 - Settings live in `%APPDATA%\Ephemeris\config.toml` (*Screen Saver Settings → Settings…* opens it).
-  They cover map centre, refresh interval, number of events, clock, feeds and skipped NZZ kickers.
+  They cover map centre, refresh interval, max news age, number of events, clock and skipped NZZ kickers.
+- **Topics:** `topics = ["world", "sport"]` picks any of `top`, `world`, `politics`, `business`, `sport`,
+  `science`, `tech`, `culture`. `publishers = ["NZZ", "BBC", "NYT"]` picks sources; the first one's headline
+  leads a card. More RSS feeds can be added under `[[extra_feeds]]` (see the comment at the top of the file).
 - News refreshes at most once an hour, using conditional requests. Articles older than 72 h are dropped.
 
 ## How it works

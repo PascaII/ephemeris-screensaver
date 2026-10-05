@@ -23,7 +23,7 @@ Guiding principle: **look sophisticated, stay extremely small, fast and efficien
 ```
 src/main.rs              arg parsing (/s, /p <hwnd>, /c, --window, --screenshot, --at, --dump-news)
 src/app.rs               frame pacing, spotlight cycling, card fades, hybrid input, secondary monitors
-src/config.rs            TOML config (%APPDATA%\Ephemeris\config.toml), defaults, cache dir
+src/config.rs            TOML config (%APPDATA%\Ephemeris\config.toml), topic/publisher feed catalog, cache dir
 src/astronomy.rs         subsolar point from UTC (pure, unit-tested)
 src/renderer/mod.rs      GL context/window creation, Renderer, Blank (secondary monitors)
 src/renderer/map.rs      map pass + View (Miller projection, lat/lon -> pixels)

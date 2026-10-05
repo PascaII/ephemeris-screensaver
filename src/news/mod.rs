@@ -18,6 +18,9 @@ pub struct Article {
     pub source: String,
     /// "de" or "en".
     pub lang: String,
+    /// Topic of the feed it came from ("world", "sport", ...).
+    #[serde(default)]
+    pub topic: String,
     pub title: String,
     /// Upper-case label NZZ puts before some titles ("LIVE-TICKER", "INTERVIEW"), removed from `title`.
     #[serde(default)]
@@ -91,7 +94,7 @@ pub fn refresh(config: &Config, allow_network: bool) -> Vec<Article> {
     let mut cache = Cache::load();
     let interval = config.refresh_interval().as_secs() as i64;
     let agent = agent();
-    let sources: Vec<RssSource> = config.sources.iter().filter(|s| s.enabled).cloned().map(RssSource).collect();
+    let sources: Vec<RssSource> = config.feeds().into_iter().map(RssSource).collect();
 
     let mut changed = false;
     for source in &sources {
@@ -135,13 +138,7 @@ pub fn refresh(config: &Config, allow_network: bool) -> Vec<Article> {
 /// Geolocate articles (dropping those without a place) and cluster them into scored events.
 pub fn events(config: &Config, gazetteer: &Gazetteer, articles: Vec<Article>) -> Vec<Event> {
     let items = articles.into_iter().filter_map(|a| gazetteer.locate(&a).map(|l| (a, l))).collect();
-    let mut order: Vec<String> = Vec::new();
-    for s in &config.sources {
-        if !order.contains(&s.name) {
-            order.push(s.name.clone());
-        }
-    }
-    dedup::cluster(items, &order, now())
+    dedup::cluster(items, &config.source_order(), now())
 }
 
 /// Background refresh loop: publish cached events immediately, then refresh from the network and
