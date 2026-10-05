@@ -3,6 +3,7 @@
 //!
 //! - `land_sdf.png`   2048x1024 R8 signed distance field of land (equirectangular), 128 = coastline
 //! - `lights.png`     4096x2048 R8 NASA Black Marble 2016 night lights (equirectangular)
+//! - `bluemarble.png` 2048x1024 RGB NASA Blue Marble Next Generation (July 2004), the day-side map
 //! - `gazetteer.tsv`  countries + populated places with DE/EN names for headline geolocation
 //! - `SourceSans3-*.otf`, `SourceSerif4Display-Semibold.otf`
 //!                    Latin subsets of Adobe's Source fonts (if `uvx` is available for fonttools)
@@ -13,6 +14,7 @@ use std::{fs, path::Path, process::Command};
 
 const NE: &str = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson";
 const BLACK_MARBLE: &str = "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144897/BlackMarble_2016_3km_gray.jpg";
+const BLUE_MARBLE: &str = "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/74000/74092/world.200407.3x5400x2700.jpg";
 const ADOBE: &str = "https://github.com/adobe-fonts";
 
 /// Hi-res raster used to build the SDF; the output is downsampled by `SDF_SCALE`.
@@ -39,6 +41,8 @@ fn main() {
 
     land_sdf(&land, &out.join("land_sdf.png"));
     night_lights(&lights, &out.join("lights.png"));
+    let marble = fetch(&cache, BLUE_MARBLE, "world.200407.3x5400x2700.jpg");
+    blue_marble(&marble, &out.join("bluemarble.png"));
     gazetteer(&countries, &places, &out.join("gazetteer.tsv"));
     for (repo, name) in [
         ("source-sans", "SourceSans3-Regular.otf"),
@@ -212,6 +216,12 @@ fn edt_1d(f: &[f32], d: &mut [f32]) {
 
 // ---------------------------------------------------------------------------------------------
 // Night lights
+
+fn blue_marble(src: &Path, dst: &Path) {
+    let img = image::open(src).unwrap().into_rgb8();
+    image::imageops::resize(&img, 2048, 1024, FilterType::Lanczos3).save(dst).unwrap();
+    eprintln!("wrote {} ({} KB)", dst.display(), fs::metadata(dst).unwrap().len() / 1024);
+}
 
 fn night_lights(src: &Path, dst: &Path) {
     let img = image::open(src).unwrap().into_luma8();
