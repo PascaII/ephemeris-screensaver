@@ -3,7 +3,7 @@
 use crate::astronomy;
 use crate::config::Config;
 use crate::dedup::Event;
-use crate::renderer::{Frame, Hits, Overlay, Renderer};
+use crate::renderer::{Blank, Frame, Hits, Overlay, Renderer};
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use time::UtcOffset;
@@ -30,6 +30,8 @@ pub enum Mode {
     Screensaver,
     /// Resizable development window (`--window`).
     Window,
+    /// Live preview inside the Screen Saver Settings dialog (`/p <hwnd>`).
+    Preview(isize),
 }
 
 pub enum UserEvent {
@@ -50,6 +52,8 @@ pub struct App {
     utc_offset: UtcOffset,
     credits: String,
     renderer: Option<Renderer>,
+    /// Black windows covering secondary monitors (screensaver mode).
+    blanks: Vec<Blank>,
     events: Vec<Event>,
 
     next_frame: Instant,
@@ -86,6 +90,7 @@ impl App {
             utc_offset,
             credits,
             renderer: None,
+            blanks: Vec::new(),
             events: Vec::new(),
             next_frame: now,
             last_frame: now,
@@ -180,6 +185,7 @@ impl App {
         let animating = self.opts.screenshot.is_none() && self.animate(dt, now);
 
         let unix = self.now_unix();
+        let minimal = self.preview();
         let Some(renderer) = self.renderer.as_mut() else { return };
         let frame = Frame {
             sun: astronomy::subsolar_point(unix),
@@ -192,6 +198,7 @@ impl App {
                 utc_offset: self.utc_offset,
                 show_clock: self.config.show_clock,
                 credits: &self.credits,
+                minimal,
             },
         };
         self.hits = renderer.draw(&frame);
@@ -209,6 +216,10 @@ impl App {
 
     fn screensaver(&self) -> bool {
         self.opts.mode == Mode::Screensaver
+    }
+
+    fn preview(&self) -> bool {
+        matches!(self.opts.mode, Mode::Preview(_))
     }
 
     fn update_hover(&mut self) {
@@ -258,6 +269,30 @@ fn ease(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// Child-window attributes for the Screen Saver Settings preview: fill the parent's client area.
+#[cfg(windows)]
+fn preview_attributes(attrs: WindowAttributes, hwnd: isize) -> WindowAttributes {
+    use raw_window_handle::{RawWindowHandle, Win32WindowHandle};
+    use windows_sys::Win32::Foundation::RECT;
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetClientRect;
+    let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+    unsafe { GetClientRect(hwnd as _, &mut rect) };
+    let size = winit::dpi::PhysicalSize::new((rect.right - rect.left).max(1) as u32, (rect.bottom - rect.top).max(1) as u32);
+    let Some(handle) = std::num::NonZeroIsize::new(hwnd) else { return attrs };
+    let parent = RawWindowHandle::Win32(Win32WindowHandle::new(handle));
+    // SAFETY: the handle comes from the Screen Saver Settings dialog and outlives our child window
+    // (Windows destroys the child together with its parent, which ends our event loop).
+    unsafe { attrs.with_parent_window(Some(parent)) }
+        .with_inner_size(size)
+        .with_position(winit::dpi::PhysicalPosition::new(0, 0))
+        .with_decorations(false)
+}
+
+#[cfg(not(windows))]
+fn preview_attributes(attrs: WindowAttributes, _hwnd: isize) -> WindowAttributes {
+    attrs.with_inner_size(LogicalSize::new(152.0, 112.0))
+}
+
 /// Open a link in the default browser.
 pub fn open_url(url: &str) {
     if !(url.starts_with("https://") || url.starts_with("http://")) {
@@ -284,14 +319,28 @@ impl ApplicationHandler<UserEvent> for App {
         }
         let attrs = WindowAttributes::default().with_title("Ephemeris");
         let attrs = match self.opts.mode {
-            Mode::Screensaver => attrs.with_fullscreen(Some(Fullscreen::Borderless(None))),
+            Mode::Screensaver => {
+                let primary = event_loop.primary_monitor();
+                // Cover every other monitor with a black window; the map lives on the primary one.
+                for m in event_loop.available_monitors().filter(|m| Some(m) != primary.as_ref()) {
+                    let a = WindowAttributes::default()
+                        .with_title("Ephemeris")
+                        .with_fullscreen(Some(Fullscreen::Borderless(Some(m))));
+                    let blank = Blank::new(event_loop, a);
+                    blank.window.set_cursor_visible(false);
+                    blank.window.request_redraw();
+                    self.blanks.push(blank);
+                }
+                attrs.with_fullscreen(Some(Fullscreen::Borderless(primary)))
+            }
             Mode::Window => attrs.with_inner_size(LogicalSize::new(1600.0, 900.0)),
+            Mode::Preview(hwnd) => preview_attributes(attrs, hwnd),
         };
         let renderer = Renderer::new(event_loop, attrs, self.config.center_lon);
-        if self.screensaver() {
-            renderer.window.set_cursor_visible(false);
-        } else {
-            self.cursor_visible = true;
+        match self.opts.mode {
+            Mode::Screensaver => renderer.window.set_cursor_visible(false),
+            Mode::Window => self.cursor_visible = true,
+            Mode::Preview(_) => {}
         }
         renderer.window.request_redraw();
         self.renderer = Some(renderer);
@@ -316,12 +365,43 @@ impl ApplicationHandler<UserEvent> for App {
         }
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        if self.renderer.is_none() {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        let Some(primary) = self.renderer.as_ref().map(|r| r.window.id()) else { return };
+        if self.preview() {
+            // The settings dialog owns input; just draw, and quit when it closes the preview.
+            match event {
+                WindowEvent::RedrawRequested => {
+                    self.redraw();
+                    self.renderer.as_ref().unwrap().present();
+                }
+                WindowEvent::Resized(size) => {
+                    if let Some(r) = self.renderer.as_mut() {
+                        r.resize(size.width, size.height);
+                    }
+                }
+                WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
+                _ => {}
+            }
+            return;
+        }
+        if id != primary {
+            // Secondary monitor: stay black; clicks and keys still end the screensaver.
+            match event {
+                WindowEvent::RedrawRequested => {
+                    if let Some(b) = self.blanks.iter().find(|b| b.window.id() == id) {
+                        b.draw();
+                    }
+                }
+                WindowEvent::MouseInput { state: ElementState::Pressed, .. } | WindowEvent::KeyboardInput { .. } => {
+                    event_loop.exit()
+                }
+                WindowEvent::CloseRequested => event_loop.exit(),
+                _ => {}
+            }
             return;
         }
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
             WindowEvent::Resized(size) => {
                 if let Some(r) = self.renderer.as_mut() {
                     r.resize(size.width, size.height);

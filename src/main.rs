@@ -20,7 +20,10 @@ fn main() {
         dump_news(&config);
         return;
     }
-    let opts = parse_args(args);
+    let Some(opts) = parse_args(args) else {
+        open_config();
+        return;
+    };
     // Read the local UTC offset before any other thread exists (required on Unix).
     let utc_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
 
@@ -49,27 +52,72 @@ fn dump_news(config: &config::Config) {
     }
 }
 
-fn parse_args(args: Vec<String>) -> Options {
-    let mut opts = Options {
-        mode: if cfg!(windows) { Mode::Screensaver } else { Mode::Window },
-        screenshot: None,
-        fixed_time: None,
-    };
+/// `/c` (or double-clicking the .scr): open the settings file in a text editor.
+fn open_config() {
+    let path = config::config_path();
+    #[cfg(windows)]
+    let _ = std::process::Command::new("notepad.exe").arg(&path).spawn();
+    #[cfg(not(windows))]
+    println!("Settings: {}", path.display());
+}
+
+/// Parse screensaver switches. Returns `None` for configuration mode.
+///
+/// Windows passes `/s` (run), `/p <hwnd>` (preview), `/c` or `/c:<hwnd>` (configure), in any case
+/// and with `/` or `-`. No arguments means "configure" on Windows; elsewhere it opens a window.
+fn parse_args(args: Vec<String>) -> Option<Options> {
+    let mut opts = Options { mode: Mode::Window, screenshot: None, fixed_time: None };
+    let mut configure = cfg!(windows) && args.is_empty();
     let mut it = args.into_iter();
     while let Some(arg) = it.next() {
-        // Windows passes screensaver switches as `/s`, `/S`, `-s`, `/p 1234`, `/c:1234`.
         let lower = arg.to_ascii_lowercase();
         let switch = lower.trim_start_matches(['/', '-']);
-        match switch.split(':').next().unwrap_or("") {
+        let (name, value) = match switch.split_once(':') {
+            Some((n, v)) => (n, Some(v.to_string())),
+            None => (switch, None),
+        };
+        match name {
             "s" => opts.mode = Mode::Screensaver,
+            "c" => configure = true,
+            "p" | "l" => {
+                let hwnd = value.or_else(|| it.next()).and_then(|v| v.parse().ok());
+                match hwnd {
+                    Some(h) => opts.mode = Mode::Preview(h),
+                    None => return None,
+                }
+            }
             "window" => opts.mode = Mode::Window,
             "screenshot" => opts.screenshot = it.next().map(Into::into),
             "at" => opts.fixed_time = it.next().and_then(|s| s.parse().ok()),
             _ => {}
         }
     }
+    if configure {
+        return None;
+    }
     if opts.screenshot.is_some() {
         opts.mode = Mode::Window;
     }
-    opts
+    Some(opts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mode(args: &[&str]) -> Option<Mode> {
+        parse_args(args.iter().map(|s| s.to_string()).collect()).map(|o| o.mode)
+    }
+
+    #[test]
+    fn parses_screensaver_switches() {
+        assert_eq!(mode(&["/s"]), Some(Mode::Screensaver));
+        assert_eq!(mode(&["/S"]), Some(Mode::Screensaver));
+        assert_eq!(mode(&["-s"]), Some(Mode::Screensaver));
+        assert_eq!(mode(&["/p", "1234"]), Some(Mode::Preview(1234)));
+        assert_eq!(mode(&["/p:5678"]), Some(Mode::Preview(5678)));
+        assert_eq!(mode(&["/c"]), None);
+        assert_eq!(mode(&["/c:1234"]), None);
+        assert_eq!(mode(&["--window"]), Some(Mode::Window));
+    }
 }

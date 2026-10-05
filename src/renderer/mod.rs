@@ -9,7 +9,7 @@ mod ui;
 use crate::astronomy::SubsolarPoint;
 use glow::HasContext;
 use glutin::config::{ConfigTemplateBuilder, GlConfig};
-use glutin::context::{ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentGlContext, PossiblyCurrentContext, Version};
+use glutin::context::{ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentGlContext, PossiblyCurrentContext, PossiblyCurrentGlContext, Version};
 use glutin::display::{GetGlDisplay, GlDisplay};
 use glutin::surface::{GlSurface, Surface, SwapInterval, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
@@ -40,30 +40,62 @@ pub struct Renderer {
     center_lon: f64,
 }
 
+/// Create a window with a current OpenGL 3.3 core context.
+fn gl_window(
+    event_loop: &ActiveEventLoop,
+    attrs: WindowAttributes,
+) -> (Window, Surface<WindowSurface>, PossiblyCurrentContext, glow::Context) {
+    let template = ConfigTemplateBuilder::new();
+    let (window, config) = DisplayBuilder::new()
+        .with_window_attributes(Some(attrs))
+        .build(event_loop, template, |configs| {
+            // No MSAA needed: everything is anti-aliased analytically in the shaders.
+            configs.min_by_key(|c| c.num_samples()).expect("no GL config")
+        })
+        .expect("create window");
+    let window = window.expect("window");
+    let raw = window.window_handle().ok().map(|h| h.as_raw());
+    let ctx_attrs = ContextAttributesBuilder::new()
+        .with_context_api(ContextApi::OpenGl(Some(Version::new(3, 3))))
+        .with_profile(GlProfile::Core)
+        .build(raw);
+    let display = config.display();
+    let not_current = unsafe { display.create_context(&config, &ctx_attrs) }.expect("create GL context");
+    let surface_attrs = window.build_surface_attributes(Default::default()).expect("surface attributes");
+    let surface = unsafe { display.create_window_surface(&config, &surface_attrs) }.expect("create surface");
+    let context = not_current.make_current(&surface).expect("make current");
+    let _ = surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::MIN));
+    let gl = unsafe { glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s)) };
+    (window, surface, context, gl)
+}
+
+/// A plain black window, used to cover secondary monitors in screensaver mode.
+pub struct Blank {
+    gl: glow::Context,
+    surface: Surface<WindowSurface>,
+    context: PossiblyCurrentContext,
+    pub window: Window,
+}
+
+impl Blank {
+    pub fn new(event_loop: &ActiveEventLoop, attrs: WindowAttributes) -> Self {
+        let (window, surface, context, gl) = gl_window(event_loop, attrs);
+        Blank { gl, surface, context, window }
+    }
+
+    pub fn draw(&self) {
+        let _ = self.context.make_current(&self.surface);
+        unsafe {
+            self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
+            self.gl.clear(glow::COLOR_BUFFER_BIT);
+        }
+        let _ = self.surface.swap_buffers(&self.context);
+    }
+}
+
 impl Renderer {
     pub fn new(event_loop: &ActiveEventLoop, attrs: WindowAttributes, center_lon: f64) -> Self {
-        let template = ConfigTemplateBuilder::new();
-        let (window, config) = DisplayBuilder::new()
-            .with_window_attributes(Some(attrs))
-            .build(event_loop, template, |configs| {
-                // No MSAA needed: everything is anti-aliased analytically in the shaders.
-                configs.min_by_key(|c| c.num_samples()).expect("no GL config")
-            })
-            .expect("create window");
-        let window = window.expect("window");
-        let raw = window.window_handle().ok().map(|h| h.as_raw());
-        let ctx_attrs = ContextAttributesBuilder::new()
-            .with_context_api(ContextApi::OpenGl(Some(Version::new(3, 3))))
-            .with_profile(GlProfile::Core)
-            .build(raw);
-        let display = config.display();
-        let not_current = unsafe { display.create_context(&config, &ctx_attrs) }.expect("create GL context");
-        let surface_attrs = window.build_surface_attributes(Default::default()).expect("surface attributes");
-        let surface = unsafe { display.create_window_surface(&config, &surface_attrs) }.expect("create surface");
-        let context = not_current.make_current(&surface).expect("make current");
-        let _ = surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::MIN));
-
-        let gl = unsafe { glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s)) };
+        let (window, surface, context, gl) = gl_window(event_loop, attrs);
         let map = unsafe { map::MapPass::new(&gl, window.current_monitor().map(|m| m.size().width).unwrap_or(4096)) };
         let ui = unsafe { ui::Ui::new(&gl) };
         let size = window.inner_size();
@@ -86,6 +118,8 @@ impl Renderer {
     }
 
     pub fn draw(&mut self, frame: &Frame) -> Hits {
+        // Other windows (secondary monitors) have their own contexts.
+        let _ = self.context.make_current(&self.surface);
         unsafe {
             let gl = &self.gl;
             gl.viewport(0, 0, self.view.width as i32, self.view.height as i32);

@@ -25,6 +25,8 @@ pub struct Overlay<'a> {
     pub show_clock: bool,
     /// Source names for the attribution line.
     pub credits: &'a str,
+    /// Markers only (tiny preview in the Screen Saver Settings dialog).
+    pub minimal: bool,
 }
 
 #[derive(Default)]
@@ -102,6 +104,11 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, o: &Overlay) -> Hits {
             ui.ring(x, y, (8.0 + 22.0 * ease) * s, 1.2 * s, rgba(ACCENT, 0.5 * (1.0 - ease) * alpha));
             ui.ring(x, y, 9.0 * s, 1.3 * s, rgba(ACCENT, 0.8 * alpha * ease.max(0.3)));
         }
+    }
+
+    if o.minimal {
+        ui.flush(gl, w, h);
+        return hits;
     }
 
     // ---- labels for the top events
