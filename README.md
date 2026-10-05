@@ -1,46 +1,49 @@
-# Ephemeris
+![ephemeris — a dictionary definition](ephemeris.png)
 
-A minimal Windows screensaver: a dark, flat world map with the live day/night terminator, city lights on the
-night side, and the most important news of the last few days pinned where they happen.
-Stories from NZZ, BBC and The New York Times are merged when they cover the same event.
+# ephemeris
 
-Built in Rust with a single OpenGL shader. It is one small `.scr` file, idles at ~1 fps and fetches feeds once an hour.
+a small windows screensaver written in rust. a quiet world map follows the sun, lights up cities after dark, and places recent news where it happens.
 
-## Install (Windows)
-1. Download `ephemeris.scr` from the latest CI run (Actions → build → artifacts).
-2. Right-click → **Install**, or copy it to `C:\Windows\System32`.
-3. Choose *Ephemeris* in *Screen Saver Settings*.
+## why i built it
 
-## Using it
-- Moving the mouse reveals the cursor. Hovering a marker shows that event's card; clicking a marker
-  or a headline in the card opens the article.
-- A key press or a click on the empty map ends the screensaver.
-- Without interaction, the most important events rotate through the card every few seconds.
-- Settings live in `%APPDATA%\Ephemeris\config.toml` (*Screen Saver Settings → Settings…* opens it).
-  They cover map centre, refresh interval, max news age, number of events, clock and skipped NZZ kickers.
-- **Topics:** `topics = ["world", "sport"]` picks any of `top`, `world`, `politics`, `business`, `sport`,
-  `science`, `tech`, `culture`. `publishers = ["NZZ", "BBC", "NYT"]` picks sources; the first one's headline
-  leads a card. More RSS feeds can be added under `[[extra_feeds]]` (see the comment at the top of the file).
-- News refreshes at most once an hour, using conditional requests. Articles older than 72 h are dropped.
+my father wanted an old windows screensaver he used to have, with a world map and news on it. i couldn't find it anymore, so i built him this one.
 
-## How it works
-- **Map:** one fragment shader with a Miller projection, a land signed-distance field (crisp coastlines at any
-  resolution), the live solar terminator with twilight, and NASA night lights faded in where it is dark.
-- **News:** RSS from NZZ, BBC and NYT. Articles are geolocated offline with an embedded gazetteer
-  (Natural Earth, German and English names, demonyms, regions). Reports of the same event are merged across
-  sources and languages (IDF-weighted similarity, a shared rare name/place requirement, average-linkage
-  clustering), then ranked by number of sources, recency and feed position.
+## what it does
 
-## Develop
-```sh
-cargo run --release -- --window       # windowed (Esc to quit)
-cargo run --release -- --dump-news    # inspect geolocated, clustered events
-cargo test
+- renders a flat world map with the live day/night boundary, soft twilight, and nasa city lights.
+- locates news from nzz, bbc, and the new york times using an embedded gazetteer.
+- groups reports about the same event across publishers and languages, showing the last 72 hours by default.
+- cycles through featured events while idle; hover to explore a marker, or click to open an article. a key press or a click on the empty map exits.
+
+## under the hood
+
+the interesting part is turning a handful of news feeds into a readable map without making the screensaver heavy.
+
+```text
+rss feeds -> local cache -> geolocation -> deduplication -> ranked events
+                                                               |
+utc time -> solar position -> day/night map --------------------+-> screen
 ```
-See `CLAUDE.md` for the architecture and conventions.
 
-## Credits
-- Map data: [Natural Earth](https://www.naturalearthdata.com/) (public domain)
-- City lights: NASA Earth Observatory, Black Marble 2016 (public domain)
-- Font: Inter (SIL Open Font License)
-- News: NZZ, BBC News, The New York Times RSS feeds. Headlines and links only, for personal use.
+rust handles the news pipeline on one background thread. place names and aliases resolve locally; weighted text similarity and shared names or places help merge related reports. opengl 3.3 draws the map in one shader pass, with a separate batch for text and markers.
+
+map data, lights, and fonts are embedded in a single `.scr` file. the renderer sleeps between updates and runs at roughly 30 fps during transitions. feeds refresh hourly by default, using conditional requests; there is no article scraping or runtime map download. the design targets a binary around 6 mb with low idle cpu and memory use.
+
+## try it
+
+on windows, download `ephemeris.scr` from a successful [build artifact](../../actions/workflows/build.yml), extract it, right-click it and choose install, then select ephemeris in screen saver settings. the settings button opens the config file, where you can choose topics, publishers, map centre, and timing.
+
+for development, rust and an opengl 3.3 capable system are required. the windowed mode also runs on macos.
+
+```sh
+cargo run --release -- --window                 # run in a window
+cargo run --release -- --screenshot out.png     # capture a frame
+cargo run --release -- --dump-news              # inspect clustered events
+cargo test                                    # run unit tests
+```
+
+## credits
+
+map and place data: [natural earth](https://www.naturalearthdata.com/), public domain. night lights: nasa earth observatory, black marble 2016, public domain. typography: inter, under the sil open font license.
+
+news comes from nzz, bbc, and the new york times rss feeds, with attribution and links to the originals. this project is for personal, non-commercial use; cached news expires after 72 hours by default.
