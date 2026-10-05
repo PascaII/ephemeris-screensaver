@@ -3,13 +3,24 @@
 
 mod app;
 mod astronomy;
+mod cache;
+mod config;
+mod news;
 mod renderer;
 
 use app::{App, Mode, Options};
 use winit::event_loop::EventLoop;
 
 fn main() {
-    let opts = parse_args(std::env::args().skip(1).collect());
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|a| a == "--dump-news") {
+        let cfg = config::Config::load();
+        for a in news::refresh(&cfg, true) {
+            println!("[{}] {} | {}", a.source, a.title, a.geo_tags.join("; "));
+        }
+        return;
+    }
+    let opts = parse_args(args);
     let event_loop = EventLoop::new().expect("event loop");
     let mut app = App::new(opts);
     event_loop.run_app(&mut app).expect("run app");
