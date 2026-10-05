@@ -71,10 +71,11 @@ impl View {
 }
 
 impl MapPass {
-    pub unsafe fn new(gl: &glow::Context) -> Self {
+    /// `screen_width` limits the night-lights texture: no point keeping 4096 px for a 1080p screen.
+    pub unsafe fn new(gl: &glow::Context, screen_width: u32) -> Self {
         let program = gl_util::program(gl, include_str!("shaders/fullscreen.vert"), include_str!("shaders/map.frag"));
-        let land = gl_util::gray_png_texture(gl, LAND_SDF, false);
-        let lights = gl_util::gray_png_texture(gl, LIGHTS, true);
+        let land = gl_util::gray_png_texture(gl, LAND_SDF, false, u32::MAX);
+        let lights = gl_util::gray_png_texture(gl, LIGHTS, true, screen_width.max(1024));
         gl.use_program(Some(program));
         gl.uniform_1_i32(gl.get_uniform_location(program, "u_land").as_ref(), 0);
         gl.uniform_1_i32(gl.get_uniform_location(program, "u_lights").as_ref(), 1);

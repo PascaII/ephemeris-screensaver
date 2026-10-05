@@ -64,7 +64,7 @@ impl Renderer {
         let _ = surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::MIN));
 
         let gl = unsafe { glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s)) };
-        let map = unsafe { map::MapPass::new(&gl) };
+        let map = unsafe { map::MapPass::new(&gl, window.current_monitor().map(|m| m.size().width).unwrap_or(4096)) };
         let ui = unsafe { ui::Ui::new(&gl) };
         let size = window.inner_size();
         Renderer {
