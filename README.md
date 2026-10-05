@@ -1,4 +1,4 @@
-![ephemeris — a dictionary definition](ephemeris.png)
+<img src="ephemeris.png" alt="ephemeris — a dictionary definition" width="320">
 
 # ephemeris
 
