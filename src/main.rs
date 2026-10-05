@@ -5,6 +5,7 @@ mod app;
 mod astronomy;
 mod cache;
 mod config;
+mod geolocation;
 mod news;
 mod renderer;
 
@@ -15,8 +16,10 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--dump-news") {
         let cfg = config::Config::load();
+        let gaz = geolocation::Gazetteer::load();
         for a in news::refresh(&cfg, true) {
-            println!("[{}] {} | {}", a.source, a.title, a.geo_tags.join("; "));
+            let at = gaz.locate(&a).map(|l| format!("{} ({})", l.name, l.iso)).unwrap_or_else(|| "-".into());
+            println!("{:<28} [{}] {}", at, a.source, a.title);
         }
         return;
     }

@@ -1,0 +1,163 @@
+# Hand-curated additions to the generated gazetteer.
+#
+#   X  iso2  -    -    names   alias for a country (uses the country's label point); the first
+#                              name replaces the country's display name
+#   R  iso2  lat  lon  names   region / landmark / institution with its own coordinates
+#   S  -     -    -    names   stoplist: never treat these words as places
+#
+# Names are matched as whole words. A trailing * means "word starts with" (for German adjectives,
+# which are lower-case and inflected: russisch* matches russische, russischen, ...). ALL-CAPS
+# names (US, UK) only match exactly that spelling. Other names must be capitalised in the text.
+# A leading ~ marks a weak hint (people, parties): it counts half as much as a place name.
+
+S	-	-	-	Essen|Halle|Male|Mobile|Reading|Sale|Nice|Split|Derby|Hull|Siegen|Mark|Victoria|Hamilton|Jackson|Lincoln|Austin|Charlotte|Florence|Regina|George|Gary|Tyler|Allen|Irving|Garland|Leon|Marion|Hagen|Of|Bar|Hue|Chad|Jordan|Georgia|Columbia|Kent|Independence|Concord|Mesa|Orange|Surprise|Paradise|Enterprise|Mission|Plano|Norman|Santa|San|Rio|Bay|Union|Liberty|Mercedes|Barcelona FC|Sport|Merz|Bild|Grand|Golden|Alexandria VA|Victor|Valencia CF|Cork|Nancy|Angers|Tours|Dover|Bath|Batman|Bus|Nord|Sud|Ost|West|Lugano FC|Wels|Gent|Pest|Kurier|Marl|Herne|Moers|Neuss|Ulm|Hamm|Bologna FC|Ford
+
+# Countries: common names, abbreviations, demonyms (EN) and adjective stems (DE)
+X	US	-	-	United States|US|USA|U.S.|America|Amerika|American|Americans|Amerikaner|amerikanisch*|Washington|White House|Weisses Haus|Pentagon|Congress|Kongress|~Trump
+X	GB	-	-	United Kingdom|UK|U.K.|Britain|Great Britain|British|Britische|Grossbritannien|Britannien|England|English|britisch*|englisch*|Downing Street|No10|Westminster
+X	RU	-	-	Russia|Russian|Russians|Russland|Russen|Russe|russisch*|Kremlin|Kreml|~Putin
+X	UA	-	-	Ukraine|Ukrainian|Ukrainians|Ukrainer|Ukrainerin|ukrainisch*|~Zelensky|~Selenski|~Selenskyj
+X	CN	-	-	China|Chinese|Chinas|chinesisch*|Beijing|Peking|~Xi Jinping
+X	JP	-	-	Japan|Japanese|Japans|japanisch*|Tokyo|Tokio
+X	DE	-	-	Germany|German|Germans|Deutschland|Deutschlands|deutsch*|Bundesregierung|Bundestag
+X	FR	-	-	France|French|Frankreich|Frankreichs|französisch*|Élysée|Elysee|~Macron
+X	IT	-	-	Italy|Italian|Italien|Italiens|italienisch*|~Meloni
+X	ES	-	-	Spain|Spanish|Spanien|Spaniens|spanisch*|~Sánchez|~Sanchez
+X	PT	-	-	Portugal|Portuguese|portugiesisch*
+X	CH	-	-	Switzerland|Swiss|Schweiz|Schweizer|Schweizerin|schweizerisch*|Bundesrat|Nationalrat|Ständerat|Bundeshaus|Eidgenossenschaft|~SVP|~SP|~FDP|~AHV
+X	AT	-	-	Austria|Austrian|Österreich|Oesterreich|österreichisch*
+X	NL	-	-	Netherlands|Dutch|Holland|Niederlande|niederländisch*|holländisch*
+X	BE	-	-	Belgium|Belgian|Belgien|belgisch*
+X	PL	-	-	Poland|Polish|Polen|polnisch*
+X	HU	-	-	Hungary|Hungarian|Ungarn|ungarisch*|~Orban|~Orbán
+X	CZ	-	-	Czech Republic|Czechia|Czech|Tschechien|tschechisch*
+X	SK	-	-	Slovakia|Slovak|Slowakei|slowakisch*
+X	GR	-	-	Greece|Greek|Griechenland|griechisch*
+X	TR	-	-	Turkey|Türkiye|Turkish|Türkei|türkisch*|~Erdogan|~Erdoğan
+X	IL	-	-	Israel|Israeli|Israelis|Israels|israelisch*|~Netanyahu|~Netanjahu|Knesset
+X	PS	-	-	Palestine|Palestinian|Palestinians|Palästina|Palästinenser|palästinensisch*
+X	IR	-	-	Iran|Iranian|Iranians|Irans|iranisch*|Tehran|Teheran
+X	IQ	-	-	Iraq|Iraqi|Irak|irakisch*
+X	SY	-	-	Syria|Syrian|Syrien|syrisch*
+X	LB	-	-	Lebanon|Lebanese|Libanon|libanesisch*|Hezbollah|Hisbollah
+X	EG	-	-	Egypt|Egyptian|Ägypten|ägyptisch*
+X	SA	-	-	Saudi Arabia|Saudi|Saudis|Saudiarabien|Saudi-Arabien|saudisch*
+X	YE	-	-	Yemen|Yemeni|Jemen|Jemens|jemenitisch*|Houthi|Houthis|Huthi
+X	AE	-	-	United Arab Emirates|UAE|Emirati|Emirate|Vereinigte Arabische Emirate|emiratisch*
+X	QA	-	-	Qatar|Qatari|Katar|katarisch*
+X	JO	-	-	Jordanien|jordanisch*|Jordanian
+X	AF	-	-	Afghanistan|Afghan|afghanisch*|Taliban
+X	PK	-	-	Pakistan|Pakistani|pakistanisch*
+X	IN	-	-	India|Indian|Indien|Indiens|indisch*|~Modi
+X	BD	-	-	Bangladesh|Bangladeshi|Bangladesch
+X	LK	-	-	Sri Lanka|Sri Lankan
+X	NP	-	-	Nepal|Nepalese|Nepali
+X	MM	-	-	Myanmar|Burma|Burmese|Birma
+X	TH	-	-	Thailand|Thai|thailändisch*
+X	VN	-	-	Vietnam|Vietnamese|vietnamesisch*
+X	PH	-	-	Philippines|Philippine|Filipino|Philippinen|philippinisch*
+X	ID	-	-	Indonesia|Indonesian|Indonesien|indonesisch*
+X	MY	-	-	Malaysia|Malaysian|malaysisch*
+X	KP	-	-	North Korea|North Korean|Nordkorea|nordkoreanisch*|Pyongyang|Pjongjang|~Kim Jong Un
+X	KR	-	-	South Korea|South Korean|Südkorea|südkoreanisch*
+X	TW	-	-	Taiwan|Taiwanese|taiwanisch*
+X	AU	-	-	Australia|Australian|Australien|australisch*
+X	NZ	-	-	New Zealand|Neuseeland
+X	CA	-	-	Canada|Canadian|Kanada|kanadisch*|~Carney
+X	MX	-	-	Mexico|Mexican|Mexiko|mexikanisch*
+X	BR	-	-	Brazil|Brazilian|Brasilien|Brasiliens|brasilianisch*|~Lula|~Bolsonaro
+X	AR	-	-	Argentina|Argentine|Argentinian|Argentinien|argentinisch*|~Milei
+X	CL	-	-	Chile|Chilean|chilenisch*
+X	CO	-	-	Colombia|Colombian|Kolumbien|kolumbianisch*
+X	VE	-	-	Venezuela|Venezuelan|venezolanisch*|~Maduro
+X	PE	-	-	Peru|Peruvian|peruanisch*
+X	CU	-	-	Cuba|Cuban|Kuba|kubanisch*
+X	HT	-	-	Haiti|Haitian|haitianisch*
+X	NG	-	-	Nigeria|Nigerian|nigerianisch*
+X	ZA	-	-	South Africa|South African|Südafrika|südafrikanisch*
+X	KE	-	-	Kenya|Kenyan|Kenia|kenianisch*
+X	ET	-	-	Ethiopia|Ethiopian|Äthiopien|äthiopisch*
+X	SD	-	-	Sudan|Sudanese|sudanesisch*
+X	SS	-	-	South Sudan|Südsudan
+X	SO	-	-	Somalia|Somali|somalisch*|al-Shabab|Shabab
+X	CD	-	-	DR Congo|Congo|Congolese|Kongo|kongolesisch*|DRC
+X	ML	-	-	Mali|Malian|malisch*
+X	NE	-	-	Niger|nigrisch*
+X	LY	-	-	Libya|Libyan|Libyen|libysch*
+X	TN	-	-	Tunisia|Tunisian|Tunesien|tunesisch*
+X	DZ	-	-	Algeria|Algerian|Algerien|algerisch*
+X	MA	-	-	Morocco|Moroccan|Marokko|marokkanisch*
+X	SE	-	-	Sweden|Swedish|Schweden|schwedisch*
+X	NO	-	-	Norway|Norwegian|Norwegen|norwegisch*
+X	DK	-	-	Denmark|Danish|Dänemark|dänisch*
+X	FI	-	-	Finland|Finnish|Finnland|finnisch*
+X	IE	-	-	Ireland|Irish|Irland|irisch*
+X	RS	-	-	Serbia|Serbian|Serbien|serbisch*
+X	HR	-	-	Croatia|Croatian|Kroatien|kroatisch*
+X	BA	-	-	Bosnia|Bosnian|Bosnien|Bosnien-Herzegowina|bosnisch*
+X	XK	-	-	Kosovo|kosovarisch*
+X	AL	-	-	Albania|Albanian|Albanien|albanisch*
+X	RO	-	-	Romania|Romanian|Rumänien|rumänisch*
+X	BG	-	-	Bulgaria|Bulgarian|Bulgarien|bulgarisch*
+X	MD	-	-	Moldova|Moldovan|Moldau|Moldawien|moldauisch*
+X	BY	-	-	Belarus|Belarusian|Weissrussland|belarussisch*|weissrussisch*|~Lukashenko|~Lukaschenko
+X	LV	-	-	Latvia|Latvian|Lettland|lettisch*
+X	LT	-	-	Lithuania|Lithuanian|Litauen|litauisch*
+X	EE	-	-	Estonia|Estonian|Estland|estnisch*
+X	GE	-	-	Georgien|georgisch*|Tbilisi|Tiflis
+X	AM	-	-	Armenia|Armenian|Armenien|armenisch*
+X	AZ	-	-	Azerbaijan|Azerbaijani|Aserbaidschan|aserbaidschanisch*
+X	KZ	-	-	Kazakhstan|Kazakh|Kasachstan|kasachisch*
+X	MN	-	-	Mongolia|Mongolian|Mongolei|mongolisch*
+X	GL	-	-	Greenland|Grönland|grönländisch*
+
+# Regions, landmarks and institutions
+R	PS	31.45	34.40	Gaza|Gaza Strip|Gazastreifen|Hamas
+R	PS	31.95	35.25	West Bank|Westjordanland
+R	UA	45.30	34.40	Crimea|Krim
+R	UA	48.00	37.80	Donbas|Donbass|Donezk|Donetsk
+R	UA	48.57	39.31	Luhansk|Lugansk
+R	UA	50.45	30.52	Kyiv|Kiev|Kiew|Kyjiw
+R	UA	49.99	36.23	Kharkiv|Charkiw
+R	UA	46.48	30.72	Odesa|Odessa
+R	RU	60.00	100.00	Siberia|Sibirien
+R	RU	55.75	37.62	Moscow|Moskau
+R	ET	13.50	39.47	Tigray|Mekele|Mekelle
+R	SD	13.50	24.00	Darfur
+R	IN	34.10	74.80	Kashmir|Kaschmir
+R	JP	26.50	127.90	Okinawa
+R	FR	42.15	9.10	Corsica|Korsika
+R	ES	41.60	1.60	Catalonia|Katalonien
+R	ES	35.89	-5.32	Ceuta
+R	CN	22.30	114.17	Hong Kong|Hongkong
+R	CN	41.50	85.00	Xinjiang
+R	CN	31.00	88.00	Tibet
+R	US	21.30	-157.85	Hawaii
+R	US	61.20	-149.90	Alaska
+R	US	36.16	-86.78	Nashville
+R	US	42.45	-76.48	Cornell
+R	US	38.90	-77.04	Capitol Hill
+R	US	40.75	-73.97	New York|UN|U.N.|United Nations|Vereinte Nationen|Uno
+R	BE	50.85	4.35	Brussels|EU|European Union|Europäische Union|EU-Kommission|European Commission|Brüssel|Nato|NATO
+R	CH	46.95	7.44	Bern
+R	CH	47.17	8.52	Zug|Zuger
+R	CH	46.20	7.60	Valais|Wallis
+R	CH	46.33	8.80	Ticino|Tessin
+R	CH	46.70	9.60	Graubünden|Bündner
+R	CH	47.38	8.54	Zürich|Zürcher
+R	CH	47.25	8.70	Lake Zurich|Zürichsee
+R	CH	47.55	9.40	Lake Constance|Bodensee
+R	GB	51.50	-0.12	London|Londoner
+R	GB	51.70	-1.78	Fairford
+R	DE	48.14	11.58	Munich|München|Oktoberfest
+R	YE	13.32	43.25	Mokha|Mocha
+R	YE	15.00	42.00	Red Sea|Rotes Meer|Roten Meer
+R	IR	26.50	56.30	Strait of Hormuz|Hormuz|Strasse von Hormus|Hormus
+R	IL	32.08	34.78	Tel Aviv
+R	XX	43.00	35.00	Black Sea|Schwarzes Meer|Schwarzen Meer
+R	TW	24.00	119.50	Taiwan Strait|Taiwanstrasse
+R	CN	12.00	114.00	South China Sea|Südchinesisches Meer|Südchinesischen Meer
+R	XX	15.00	2.00	Sahel
+R	IQ	36.20	44.00	Kurdistan|Kurdish|Kurden|kurdisch*
+R	VA	41.90	12.45	Vatican|Vatikan|~Pope|~Papst
+R	SE	59.33	18.07	Stockholm|~Nobel

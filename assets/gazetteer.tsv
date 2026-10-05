@@ -8,24 +8,24 @@ C	VA	41.90	12.45	825	Vatican|Vatican City|Vatikanstadt
 C	VU	-15.37	166.91	299882	Vanuatu
 C	UZ	41.69	64.01	33580650	Uzbekistan|Usbekistan
 C	UY	-32.96	-55.97	3461734	Uruguay
-C	FM	6.89	158.23	113815	Micronesia|Federated States of Micronesia|Föderierte Staaten von Mikronesien
-C	MH	7.08	171.19	58791	Marshall Is.|Marshall Islands|Marshallinseln
-C	MP	15.19	145.73	57216	N. Mariana Is.|Northern Mariana Islands|Nördliche Marianen
-C	VI	17.75	-64.78	106631	U.S. Virgin Is.|United States Virgin Islands|Amerikanische Jungferninseln
+C	FM	6.89	158.23	113815	Federated States of Micronesia|Micronesia|Föderierte Staaten von Mikronesien
+C	MH	7.08	171.19	58791	Marshall Islands|Marshallinseln
+C	MP	15.19	145.73	57216	Northern Mariana Islands|Nördliche Marianen
+C	VI	17.75	-64.78	106631	United States Virgin Islands|Amerikanische Jungferninseln
 C	GU	13.35	144.70	167294	Guam
 C	AS	-14.33	-170.75	55312	American Samoa|Amerikanisch-Samoa
 C	PR	18.23	-66.48	3193694	Puerto Rico
-C	US	39.54	-97.48	328239523	United States of America|Vereinigte Staaten|United States
-C	GS	-55.68	-31.06	30	S. Geo. and the Is.|South Georgia and the South Sandwich Islands|Südgeorgien und die Südlichen Sandwichinseln|South Georgia and the Islands
-C	IO	-6.19	71.35	3000	Br. Indian Ocean Ter.|British Indian Ocean Territory|Britisches Territorium im Indischen Ozean
-C	SH	-15.95	-5.71	4534	Saint Helena|St. Helena
-C	PN	-24.36	-128.32	54	Pitcairn Is.|Pitcairn Islands|Pitcairninseln
+C	US	39.54	-97.48	328239523	United States|United States of America|Vereinigte Staaten
+C	GS	-55.68	-31.06	30	South Georgia and the Islands|South Georgia and the South Sandwich Islands|Südgeorgien und die Südlichen Sandwichinseln
+C	IO	-6.19	71.35	3000	British Indian Ocean Territory|Britisches Territorium im Indischen Ozean
+C	SH	-15.95	-5.71	4534	Saint Helena
+C	PN	-24.36	-128.32	54	Pitcairn Islands|Pitcairninseln
 C	AI	18.24	-63.03	14731	Anguilla
-C	FK	-51.61	-58.74	3398	Falkland Is.|Falkland Islands|Falklandinseln|Falkland Islands / Malvinas
-C	KY	19.32	-81.24	64948	Cayman Is.|Cayman Islands
+C	FK	-51.61	-58.74	3398	Falkland Islands / Malvinas|Falkland Islands|Falklandinseln
+C	KY	19.32	-81.24	64948	Cayman Islands
 C	BM	32.30	-64.76	63918	Bermuda
-C	VG	18.43	-64.64	30030	British Virgin Is.|British Virgin Islands|Britische Jungferninseln
-C	TC	21.82	-71.75	38191	Turks and Caicos Is.|Turks and Caicos Islands|Turks- und Caicosinseln
+C	VG	18.43	-64.64	30030	British Virgin Islands|Britische Jungferninseln
+C	TC	21.82	-71.75	38191	Turks and Caicos Islands|Turks- und Caicosinseln
 C	MS	16.74	-62.19	4649	Montserrat
 C	JE	49.22	-2.09	107800	Jersey
 C	GG	49.46	-2.56	62792	Guernsey
@@ -48,17 +48,17 @@ C	TW	23.65	120.87	23568378	Taiwan|Republik China
 C	SY	35.01	38.28	17070135	Syria|Syrien
 C	CH	46.72	7.46	8574832	Switzerland|Schweiz
 C	SE	65.86	19.02	10285453	Sweden|Schweden
-C	SZ	-26.53	31.47	1148130	eSwatini|Eswatini|Kingdom of eSwatini
+C	SZ	-26.53	31.47	1148130	Kingdom of eSwatini|Eswatini|eSwatini
 C	SR	4.14	-55.91	581363	Suriname
-C	SS	7.23	30.39	11062113	S. Sudan|South Sudan|Südsudan
+C	SS	7.23	30.39	11062113	South Sudan|Südsudan
 C	SD	16.33	29.26	42813238	Sudan
 C	LK	7.58	80.70	21803000	Sri Lanka
 C	ES	40.09	-3.46	47076781	Spain|Spanien
-C	KR	36.38	128.13	51709098	South Korea|Südkorea|Republic of Korea
+C	KR	36.38	128.13	51709098	Republic of Korea|South Korea|Südkorea
 C	ZA	-29.71	23.67	58558270	South Africa|Südafrika
 C	SO	3.57	45.19	10192317	Somalia
 C	-99	9.44	46.73	5096159	Somaliland
-C	SB	-8.03	159.17	669823	Solomon Is.|Solomon Islands|Salomonen
+C	SB	-8.03	159.17	669823	Solomon Islands|Salomonen
 C	SK	48.73	19.05	5454073	Slovakia|Slowakei
 C	SI	46.06	14.92	2087946	Slovenia|Slowenien
 C	SG	1.37	103.82	5703569	Singapore|Singapur
@@ -70,11 +70,11 @@ C	SA	23.81	44.70	34268528	Saudi Arabia|Saudi-Arabien
 C	ST	0.97	7.02	215056	São Tomé and Principe|São Tomé and Príncipe|São Tomé und Príncipe
 C	SM	43.93	12.44	33860	San Marino
 C	WS	-13.64	-172.44	197097	Samoa
-C	VC	13.09	-61.34	110589	St. Vin. and Gren.|Saint Vincent and the Grenadines|St. Vincent und die Grenadinen
-C	LC	13.89	-60.98	182790	Saint Lucia|St. Lucia
-C	KN	17.34	-62.76	52834	St. Kitts and Nevis|Saint Kitts and Nevis|St. Kitts und Nevis
+C	VC	13.09	-61.34	110589	Saint Vincent and the Grenadines
+C	LC	13.89	-60.98	182790	Saint Lucia
+C	KN	17.34	-62.76	52834	Saint Kitts and Nevis
 C	RW	-1.90	30.10	12626950	Rwanda|Ruanda
-C	RU	58.25	44.69	144373535	Russia|Russland|Russian Federation
+C	RU	58.25	44.69	144373535	Russian Federation|Russia|Russland
 C	RO	45.73	24.97	19356544	Romania|Rumänien
 C	QA	25.24	51.14	2832067	Qatar|Katar
 C	PT	39.61	-8.27	10269417	Portugal
@@ -88,13 +88,13 @@ C	PW	7.52	134.58	18008	Palau
 C	PK	29.33	68.55	216565318	Pakistan
 C	OM	22.12	57.34	4974986	Oman
 C	NO	61.36	9.68	5347896	Norway|Norwegen
-C	KP	39.89	126.44	25666161	North Korea|Nordkorea|Dem. Rep. Korea
+C	KP	39.89	126.44	25666161	North Korea|Nordkorea
 C	NG	9.44	7.50	200963599	Nigeria
 C	NE	17.45	9.50	23310715	Niger
 C	NI	12.67	-85.07	6545502	Nicaragua
 C	NZ	-39.76	172.79	4917000	New Zealand|Neuseeland
 C	NU	-19.05	-169.86	1620	Niue
-C	CK	-21.22	-159.79	17459	Cook Is.|Cook Islands|Cookinseln
+C	CK	-21.22	-159.79	17459	Cook Islands|Cookinseln
 C	NL	52.42	5.61	17332850	Netherlands|Niederlande
 C	AW	12.52	-69.97	106314	Aruba
 C	CW	12.15	-68.92	157538	Curaçao
@@ -103,7 +103,7 @@ C	NR	-0.52	166.93	12581	Nauru
 C	NA	-20.58	17.11	2494530	Namibia
 C	MZ	-13.94	37.84	30366036	Mozambique|Mosambik
 C	MA	31.65	-7.19	36471769	Morocco|Marokko
-C	EH	23.97	-12.63	603253	W. Sahara|Western Sahara|Westsahara
+C	EH	23.97	-12.63	603253	Western Sahara|Westsahara
 C	ME	42.80	19.14	622137	Montenegro
 C	MN	46.00	104.15	3225167	Mongolia|Mongolei
 C	MD	47.43	28.49	2657637	Moldova|Republik Moldau
@@ -126,7 +126,7 @@ C	LR	6.45	-9.46	4937374	Liberia
 C	LS	-29.48	28.25	2125268	Lesotho
 C	LB	34.13	35.99	6855713	Lebanon|Libanon
 C	LV	57.07	25.46	1912789	Latvia|Lettland
-C	LA	19.43	102.53	7169455	Laos|Lao PDR
+C	LA	19.43	102.53	7169455	Lao PDR|Laos
 C	KG	41.67	74.53	6456900	Kyrgyzstan|Kirgisistan
 C	KW	29.41	47.31	4207083	Kuwait
 C	XK	42.59	20.86	1794248	Kosovo
@@ -157,50 +157,50 @@ C	GR	39.49	21.73	10716322	Greece|Griechenland
 C	GH	7.72	-1.04	30417856	Ghana
 C	DE	50.96	9.68	83132799	Germany|Deutschland
 C	GE	41.87	43.74	3720382	Georgia|Georgien
-C	GM	13.64	-15.00	2347706	Gambia|The Gambia
+C	GM	13.64	-15.00	2347706	The Gambia|Gambia
 C	GA	-0.44	11.84	2172579	Gabon|Gabun
 C	FR	46.70	2.55	67059887	France|Frankreich
-C	PM	47.04	-56.33	5997	St. Pierre and Miquelon|Saint Pierre and Miquelon|Saint-Pierre und Miquelon
-C	WF	-14.29	-178.14	11558	Wallis and Futuna Is.|Wallis and Futuna|Wallis und Futuna|Wallis and Futuna Islands
-C	MF	18.08	-63.05	38002	St-Martin|Saint Martin|Saint-Martin
-C	BL	17.90	-62.83	9961	St-Barthélemy|Saint Barthélemy|Saint-Barthélemy|Saint Barthelemy
-C	PF	-17.63	-149.46	279287	Fr. Polynesia|French Polynesia|Französisch-Polynesien
+C	PM	47.04	-56.33	5997	Saint Pierre and Miquelon|Saint-Pierre und Miquelon
+C	WF	-14.29	-178.14	11558	Wallis and Futuna Islands|Wallis and Futuna|Wallis und Futuna
+C	MF	18.08	-63.05	38002	Saint-Martin|Saint Martin|St-Martin
+C	BL	17.90	-62.83	9961	Saint-Barthélemy|Saint Barthélemy|St-Barthélemy|Saint Barthelemy
+C	PF	-17.63	-149.46	279287	French Polynesia|Französisch-Polynesien
 C	NC	-21.06	165.08	287800	New Caledonia|Neukaledonien
-C	TF	-49.30	69.12	140	Fr. S. Antarctic Lands|French Southern and Antarctic Lands|Französische Süd- und Antarktisgebiete
-C	AX	60.16	19.87	29884	Åland|Åland Islands|Aland
+C	TF	-49.30	69.12	140	French Southern and Antarctic Lands|Französische Süd- und Antarktisgebiete
+C	AX	60.16	19.87	29884	Åland Islands|Åland|Aland
 C	FI	63.25	27.28	5520314	Finland|Finnland
 C	FJ	-17.83	177.98	889953	Fiji|Fidschi
 C	ET	8.03	39.09	112078730	Ethiopia|Äthiopien
 C	EE	58.72	25.87	1326590	Estonia|Estland
 C	ER	15.79	38.29	6081196	Eritrea
-C	GQ	2.33	8.99	1355986	Eq. Guinea|Equatorial Guinea|Äquatorialguinea
+C	GQ	2.33	8.99	1355986	Equatorial Guinea|Äquatorialguinea
 C	SV	13.69	-88.89	6453553	El Salvador
 C	EG	26.19	29.45	100388073	Egypt|Ägypten
 C	EC	-1.26	-78.19	17373662	Ecuador
-C	DO	19.10	-70.65	10738958	Dominican Rep.|Dominican Republic|Dominikanische Republik
+C	DO	19.10	-70.65	10738958	Dominican Republic|Dominikanische Republik
 C	DM	15.46	-61.34	71808	Dominica
 C	DJ	11.98	42.50	973560	Djibouti|Dschibuti
 C	GL	74.32	-39.34	56225	Greenland|Grönland
-C	FO	62.19	-7.06	48678	Faeroe Is.|Faroe Islands|Färöer|Faeroe Islands
+C	FO	62.19	-7.06	48678	Faeroe Islands|Faroe Islands|Färöer
 C	DK	55.97	9.02	5818553	Denmark|Dänemark
-C	CZ	49.88	15.38	10669709	Czechia|Czech Republic|Tschechien
-C	-99	35.22	33.69	326000	N. Cyprus|Turkish Republic of Northern Cyprus|Türkische Republik Nordzypern|Northern Cyprus
+C	CZ	49.88	15.38	10669709	Czech Republic|Czechia|Tschechien
+C	-99	35.22	33.69	326000	Northern Cyprus|Turkish Republic of Northern Cyprus|Türkische Republik Nordzypern
 C	CY	34.91	33.08	1198575	Cyprus|Republik Zypern
 C	CU	21.33	-77.98	11333483	Cuba|Kuba
 C	HR	45.81	16.37	4067500	Croatia|Kroatien
 C	CI	7.49	-5.57	25716544	Côte d'Ivoire|Ivory Coast|Elfenbeinküste
 C	CR	10.07	-84.08	5047561	Costa Rica
-C	CD	-1.86	23.46	86790567	Dem. Rep. Congo|Democratic Republic of the Congo|Demokratische Republik Kongo
-C	CG	0.14	15.90	5380508	Congo|Republic of the Congo|Republik Kongo
+C	CD	-1.86	23.46	86790567	Democratic Republic of the Congo|Demokratische Republik Kongo
+C	CG	0.14	15.90	5380508	Republic of the Congo|Congo|Republik Kongo
 C	KM	-11.73	43.32	850886	Comoros|Komoren
 C	CO	3.37	-73.17	50339443	Colombia|Kolumbien
 C	CN	32.50	106.34	1397715000	China|People's Republic of China|Volksrepublik China
-C	MO	22.13	113.56	640445	Macao|Macau|Macao S.A.R
-C	HK	22.45	114.10	7507400	Hong Kong|Hongkong|Hong Kong S.A.R.
+C	MO	22.13	113.56	640445	Macao|Macau
+C	HK	22.45	114.10	7507400	Hong Kong|Hongkong
 C	CL	-38.15	-72.32	18952038	Chile
 C	TD	15.14	18.65	15946876	Chad|Tschad
-C	CF	6.99	20.91	4745185	Central African Rep.|Central African Republic|Zentralafrikanische Republik
-C	CV	15.07	-23.64	549935	Cabo Verde|Cape Verde|Kap Verde|Republic of Cabo Verde
+C	CF	6.99	20.91	4745185	Central African Republic|Zentralafrikanische Republik
+C	CV	15.07	-23.64	549935	Republic of Cabo Verde|Cape Verde|Cabo Verde|Kap Verde
 C	CA	60.32	-101.91	37589262	Canada|Kanada
 C	CM	4.59	12.47	25876380	Cameroon|Kamerun
 C	KH	12.65	104.50	16486542	Cambodia|Kambodscha
@@ -208,10 +208,10 @@ C	MM	21.57	95.80	54045420	Myanmar
 C	BI	-3.33	29.92	11530580	Burundi
 C	BF	12.67	-1.36	20321378	Burkina Faso
 C	BG	42.51	25.16	6975761	Bulgaria|Bulgarien
-C	BN	4.45	114.55	433285	Brunei|Brunei Darussalam
+C	BN	4.45	114.55	433285	Brunei Darussalam|Brunei
 C	BR	-12.10	-49.56	211049527	Brazil|Brasilien
 C	BW	-22.10	24.18	2303697	Botswana
-C	BA	44.09	18.07	3301000	Bosnia and Herz.|Bosnia and Herzegovina|Bosnien und Herzegowina
+C	BA	44.09	18.07	3301000	Bosnia and Herzegovina|Bosnien und Herzegowina
 C	BO	-16.67	-64.59	11513100	Bolivia|Bolivien
 C	BT	27.54	90.04	763092	Bhutan
 C	BJ	10.32	2.35	11801151	Benin
@@ -225,13 +225,13 @@ C	BS	26.40	-77.15	389482	Bahamas|The Bahamas
 C	AZ	40.40	47.21	10023318	Azerbaijan|Aserbaidschan
 C	AT	47.52	14.13	8877067	Austria|Österreich
 C	AU	-24.13	134.05	25364307	Australia|Australien
-C	AU	-10.49	105.67	2387	Indian Ocean Ter.|Australian Indian Ocean Territories|Australische Territorien im Indischen Ozean|Indian Ocean Territories
-C	HM	-53.10	73.51	0	Heard I. and McDonald Is.|Heard Island and McDonald Islands|Heard und McDonaldinseln|Heard I. and McDonald Islands
+C	AU	-10.49	105.67	2387	Indian Ocean Territories|Australian Indian Ocean Territories|Australische Territorien im Indischen Ozean
+C	HM	-53.10	73.51	0	Heard Island and McDonald Islands|Heard und McDonaldinseln
 C	NF	-29.03	167.95	2169	Norfolk Island|Norfolkinsel
-C	AU	-12.43	123.59	0	Ashmore and Cartier Is.|Ashmore and Cartier Islands|Ashmore- und Cartierinseln
+C	AU	-12.43	123.59	0	Ashmore and Cartier Islands|Ashmore- und Cartierinseln
 C	AM	40.46	44.80	2957731	Armenia|Armenien
 C	AR	-33.50	-64.17	44938712	Argentina|Argentinien
-C	AG	17.35	-61.79	97118	Antigua and Barb.|Antigua and Barbuda|Antigua und Barbuda
+C	AG	17.35	-61.79	97118	Antigua and Barbuda|Antigua und Barbuda
 C	AO	-12.18	17.98	31825295	Angola
 C	AD	42.55	1.54	77142	Andorra
 C	DZ	27.40	2.81	43053054	Algeria|Algerien
@@ -597,7 +597,7 @@ P	US	40.561	-105.059	228385	Fort Collins
 P	US	41.232	-111.968	377224	Ogden
 P	US	36.063	-94.157	151671	Fayetteville
 P	US	41.554	-90.588	255738	Davenport
-P	US	38.784	-90.506	360485	St. Charles|Saint Charles
+P	US	38.784	-90.506	360485	Saint Charles
 P	US	38.952	-92.334	398093	Columbia
 P	US	26.303	-98.160	150000	Edinburg
 P	US	33.216	-97.129	176930	Denton
@@ -1344,7 +1344,7 @@ P	US	41.823	-71.417	1277000	Providence
 P	US	33.530	-86.825	1128047	Birmingham
 P	US	30.680	-88.050	253466	Mobile
 P	US	30.421	-87.217	234384	Pensacola
-P	US	27.771	-82.679	800313	St. Petersburg
+P	US	27.771	-82.679	800313	
 P	US	36.070	-79.800	388887	Greensboro
 P	US	39.752	-84.202	773000	Dayton
 P	US	36.855	-75.980	1491000	Virginia Beach
@@ -1611,7 +1611,7 @@ P	US	26.745	-80.124	1250000	West Palm Beach
 P	US	27.336	-82.531	589959	Sarasota
 P	US	29.211	-81.023	216890	Daytona Beach
 P	US	29.651	-82.325	191097	Gainesville
-P	US	26.640	-81.860	188606	Ft. Myers|Fort Myers
+P	US	26.640	-81.860	188606	Fort Myers
 P	US	33.461	-81.985	262332	Augusta
 P	US	32.792	-79.992	411940	Charleston
 P	US	40.700	-89.670	172308	Peoria
@@ -1909,7 +1909,7 @@ P	IN	23.802	86.418	1246000	Dhanbad
 P	IN	26.232	78.178	978000	Gwalior
 P	IN	22.312	73.178	1756000	Vadodara
 P	IN	22.312	70.798	1260000	Rajkot
-P	US	44.944	-93.085	734854	St. Paul|Saint Paul
+P	US	44.944	-93.085	734854	Saint Paul
 P	US	46.877	-96.789	162842	Fargo
 P	US	47.038	-122.899	156984	Olympia
 P	US	47.670	-117.420	347705	Spokane
@@ -1926,7 +1926,7 @@ P	US	36.120	-95.930	946962	Tulsa
 P	US	43.550	-96.730	155724	Sioux Falls
 P	US	32.500	-93.770	248053	Shreveport
 P	US	30.458	-91.140	422072	Baton Rouge
-P	US	32.740	-97.340	1440454	Ft. Worth|Fort Worth
+P	US	32.740	-97.340	1440454	Fort Worth
 P	US	27.743	-97.402	277454	Corpus Christi
 P	US	30.269	-97.745	1161000	Austin
 P	US	35.230	-101.830	181766	Amarillo
@@ -2236,7 +2236,7 @@ P	IN	10.812	78.688	951000	Tiruchirappalli|Trichy
 P	CG	-4.770	11.880	659084	Pointe-Noire
 P	GN	7.760	-8.830	168121	Nzérékoré|Nzerekore
 P	CI	7.690	-5.030	567481	Bouaké|Bouake
-P	RE	-20.879	55.448	190047	St.-Denis|Saint-Denis
+P	RE	-20.879	55.448	190047	Saint-Denis
 P	BR	-9.967	-67.800	257642	Rio Branco
 P	BR	-2.514	-44.268	1038000	São Luís|Sao Luis
 P	BR	-8.750	-63.900	306180	Porto Velho
@@ -2293,7 +2293,7 @@ P	ES	28.100	-15.430	378495	Las Palmas|Las Palmas de Gran Canaria
 P	-99	10.436	45.016	242344	Berbera
 P	MU	-20.167	57.500	595491	Port Louis
 P	PS	31.530	34.445	505700	Gaza City|Gaza
-P	GD	12.053	-61.742	33734	Saint George's|St. George's|St. George’s
+P	GD	12.053	-61.742	33734	Saint George's
 P	BH	26.236	50.583	563920	Manama
 P	AG	17.118	-61.850	35499	Saint John's|Saint John’s
 P	TW	24.152	120.682	2629323	Taichung
@@ -2567,7 +2567,7 @@ P	CA	55.983	-87.650	125	Fort Severn
 P	CA	48.446	-89.275	99334	Thunder Bay
 P	CA	46.840	-71.246	624177	Québec|Quebec|Quebec City
 P	CA	44.650	-63.600	359111	Halifax
-P	CA	47.585	-52.681	131469	St. John's|St. John’s
+P	CA	47.585	-52.681	131469	
 P	CA	56.547	-61.686	1151	Nain
 P	CA	46.249	-63.131	42402	Charlottetown
 P	CF	8.409	20.653	11764	N'Délé|Ndele|Ndélé
@@ -2638,7 +2638,7 @@ P	US	21.309	-157.860	786000	Honolulu
 P	US	47.572	-122.342	3074000	Seattle
 P	US	33.542	-112.072	3551000	Phoenix
 P	US	32.822	-117.182	2916000	San Diego
-P	US	38.637	-90.242	2199000	St. Louis
+P	US	38.637	-90.242	2199000	
 P	US	29.997	-90.042	785000	New Orleans
 P	US	32.822	-96.842	4798000	Dallas
 P	VE	10.732	-71.662	2072000	Maracaibo
@@ -2665,7 +2665,7 @@ P	NO	59.919	10.748	835000	Oslo
 P	PK	31.562	74.348	6577000	Lahore
 P	PK	24.872	66.988	12130000	Karachi|Karatschi
 P	ZA	-29.863	30.978	2729000	Durban
-P	RU	59.941	30.314	4553000	St. Petersburg|Saint Petersburg|Sankt Petersburg
+P	RU	59.941	30.314	4553000	Saint Petersburg|Sankt Petersburg
 P	MX	20.672	-103.332	4198000	Guadalajara
 P	MX	19.052	-98.202	2195000	Puebla|Puebla City
 P	NG	12.002	8.518	3140000	Kano
@@ -2790,7 +2790,7 @@ P	AT	48.202	16.365	2400000	Vienna|Wien
 P	AU	-37.818	144.973	4170000	Melbourne
 P	TW	25.036	121.568	6900273	Taipei|Taipeh
 P	US	33.992	-118.182	12500000	Los Angeles
-P	US	38.901	-77.011	4338000	Washington, D.C.|Washington
+P	US	38.901	-77.011	4338000	Washington
 P	US	40.752	-73.982	19040000	New York|New York City
 P	GB	51.502	-0.119	8567000	London
 P	TR	41.107	29.008	10061000	Istanbul

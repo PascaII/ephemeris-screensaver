@@ -86,6 +86,10 @@ pub fn parse(xml: &str, source: &SourceConfig) -> Vec<Article> {
         }
     }
     for a in &mut articles {
+        if let Some((kicker, title)) = split_kicker(&a.title) {
+            a.kicker = kicker;
+            a.title = title;
+        }
         if a.guid.is_empty() {
             a.guid = a.url.clone();
         }
@@ -116,6 +120,13 @@ fn clean(s: &str) -> String {
         }
     }
     out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// "LIVE-TICKER - Krieg in der Ukraine: ..." -> ("LIVE-TICKER", "Krieg in der Ukraine: ...").
+fn split_kicker(title: &str) -> Option<(String, String)> {
+    let (kicker, rest) = title.split_once(" - ")?;
+    let is_label = kicker.len() <= 40 && kicker.chars().any(char::is_alphabetic) && !kicker.chars().any(char::is_lowercase);
+    is_label.then(|| (kicker.trim().to_string(), rest.trim().to_string()))
 }
 
 /// Remove analytics query parameters (BBC appends `?at_medium=RSS&at_campaign=rss`).
@@ -155,6 +166,15 @@ mod tests {
         assert_eq!(a[0].published, 1_791_219_052);
         assert_eq!(a[0].source, "NZZ");
         assert_eq!(a[0].rank, 0);
+    }
+
+    #[test]
+    fn splits_nzz_kicker() {
+        assert_eq!(
+            split_kicker("LIVE-TICKER - Krieg in der Ukraine: Toter bei Luftangriff"),
+            Some(("LIVE-TICKER".into(), "Krieg in der Ukraine: Toter bei Luftangriff".into()))
+        );
+        assert_eq!(split_kicker("Sánchez wagt die Flucht nach vorn - die Wahl"), None);
     }
 
     #[test]

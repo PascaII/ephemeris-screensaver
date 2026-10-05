@@ -234,7 +234,8 @@ fn names(p: &Value, keys: &[&str]) -> String {
     for k in keys {
         if let Some(s) = p[*k].as_str() {
             let n = norm(s);
-            if !n.is_empty() && !out.contains(&n) {
+            // Natural Earth abbreviates some names ("Bosnia and Herz."); those never appear in text.
+            if !n.is_empty() && !n.contains('.') && !out.contains(&n) {
                 out.push(n);
             }
         }
@@ -254,7 +255,7 @@ fn gazetteer(countries: &Path, places: &Path, dst: &Path) {
             p["LABEL_Y"].as_f64().unwrap(),
             p["LABEL_X"].as_f64().unwrap(),
             p["POP_EST"].as_f64().unwrap_or(0.0) as u64,
-            names(p, &["NAME", "NAME_EN", "NAME_DE", "NAME_LONG", "ADMIN"])
+            names(p, &["NAME_LONG", "NAME_EN", "NAME", "NAME_DE", "ADMIN"])
         ));
     }
     let mut n = 0;

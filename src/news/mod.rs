@@ -17,6 +17,9 @@ pub struct Article {
     /// "de" or "en".
     pub lang: String,
     pub title: String,
+    /// Upper-case label NZZ puts before some titles ("LIVE-TICKER", "INTERVIEW"), removed from `title`.
+    #[serde(default)]
+    pub kicker: String,
     pub summary: String,
     pub url: String,
     pub guid: String,
@@ -118,7 +121,8 @@ pub fn refresh(config: &Config, allow_network: bool) -> Vec<Article> {
     let mut articles: Vec<Article> = Vec::new();
     for url in urls {
         for a in cache.feeds.get(url).map(|f| f.articles.as_slice()).unwrap_or_default() {
-            if seen.insert(a.url.clone()) {
+            let skip = config.skip_kickers.iter().any(|k| !k.is_empty() && a.kicker.starts_with(k.as_str()));
+            if !skip && seen.insert(a.url.clone()) {
                 articles.push(a.clone());
             }
         }

@@ -20,6 +20,8 @@ pub struct Config {
     pub show_clock: bool,
     /// Exit the screensaver on mouse movement (classic behaviour) instead of revealing hover cards.
     pub exit_on_mouse_move: bool,
+    /// Skip articles whose NZZ-style kicker starts with one of these (opinion, podcasts, ads).
+    pub skip_kickers: Vec<String>,
     pub sources: Vec<SourceConfig>,
 }
 
@@ -54,6 +56,9 @@ impl Default for Config {
             spotlight_seconds: 12,
             show_clock: true,
             exit_on_mouse_move: false,
+            skip_kickers: ["KOMMENTAR", "GASTKOMMENTAR", "INTERVIEW", "PODCAST", "SPONSORED", "QUIZ", "NEWSLETTER"]
+                .map(String::from)
+                .to_vec(),
             sources: vec![
                 src("NZZ", "https://www.nzz.ch/startseite.rss", "de"),
                 src("NZZ", "https://www.nzz.ch/international.rss", "de"),
