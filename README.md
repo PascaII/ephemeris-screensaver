@@ -10,9 +10,10 @@ my father wanted an old windows screensaver he used to have, with a world map an
 
 ## what it does
 
-- renders a flat world map with the live day/night boundary, soft twilight, and nasa city lights.
+- renders a flat world map with nasa blue marble imagery by day, soft twilight, and city lights after dark.
 - locates news from nzz, bbc, and the new york times using an embedded gazetteer.
 - groups reports about the same event across publishers and languages, showing the last 72 hours by default.
+- shows newspaper-style headline cards, placed over nearby open water where possible and connected to their markers.
 - cycles through featured events while idle; hover to explore a marker, or click to open an article. a key press or a click on the empty map exits.
 
 ## under the hood
@@ -29,7 +30,7 @@ rust handles the news pipeline on one background thread. place names and aliases
 
 ## performance
 
-ephemeris stays small by doing less work. when nothing changes, the renderer can sleep for up to 10 seconds; fades and transitions run at roughly 30 fps. map textures use one byte per pixel, night lights are downsampled to suit the display, and rendered glyphs are cached. all embedded assets together take less than 1 mb. release builds optimize for size, use link-time optimization, and strip symbols. everything ships in one `.scr`, with no runtime map downloads; news refreshes hourly by default using conditional requests.
+ephemeris stays small by doing less work. when nothing changes, the renderer can sleep for up to 10 seconds; fades and transitions run at roughly 30 fps. coastline and night-light textures use one byte per pixel; the daytime imagery uses rgb. night lights are downsampled to suit the display, and rendered glyphs are cached. embedded imagery, place data, and subsetted fonts total about 2.6 mb. release builds optimize for size, use link-time optimization, and strip symbols. everything ships in one `.scr`, with no runtime map downloads; news refreshes hourly by default using conditional requests.
 
 the targets are a binary around 6 mb, idle cpu below 1%, and ram below 60 mb. actual windows measurements are still pending:
 
@@ -55,6 +56,6 @@ cargo test                                    # run unit tests
 
 ## credits
 
-map and place data: [natural earth](https://www.naturalearthdata.com/), public domain. night lights: nasa earth observatory, black marble 2016, public domain. typography: inter, under the sil open font license.
+coastline and place data: [natural earth](https://www.naturalearthdata.com/), public domain. imagery: nasa earth observatory, blue marble next generation (july 2004) and black marble 2016, public domain. typography: adobe source sans 3 and source serif 4, under the sil open font license.
 
 news comes from nzz, bbc, and the new york times rss feeds, with attribution and links to the originals. this project is for personal, non-commercial use; cached news expires after 72 hours by default.
