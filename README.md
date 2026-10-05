@@ -27,7 +27,18 @@ utc time -> solar position -> day/night map --------------------+-> screen
 
 rust handles the news pipeline on one background thread. place names and aliases resolve locally; weighted text similarity and shared names or places help merge related reports. opengl 3.3 draws the map in one shader pass, with a separate batch for text and markers.
 
-map data, lights, and fonts are embedded in a single `.scr` file. the renderer sleeps between updates and runs at roughly 30 fps during transitions. feeds refresh hourly by default, using conditional requests; there is no article scraping or runtime map download. the design targets a binary around 6 mb with low idle cpu and memory use.
+## performance
+
+ephemeris stays small by doing less work. when nothing changes, the renderer can sleep for up to 10 seconds; fades and transitions run at roughly 30 fps. map textures use one byte per pixel, night lights are downsampled to suit the display, and rendered glyphs are cached. all embedded assets together take less than 1 mb. release builds optimize for size, use link-time optimization, and strip symbols. everything ships in one `.scr`, with no runtime map downloads; news refreshes hourly by default using conditional requests.
+
+the targets are a binary around 6 mb, idle cpu below 1%, and ram below 60 mb. actual windows measurements are still pending:
+
+| windows benchmark | measured |
+| --- | --- |
+| release `.scr` size | |
+| idle cpu | |
+| ram during idle | |
+| test hardware / resolution | |
 
 ## try it
 
