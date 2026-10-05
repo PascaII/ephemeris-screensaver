@@ -5,6 +5,7 @@ mod app;
 mod astronomy;
 mod cache;
 mod config;
+mod dedup;
 mod geolocation;
 mod news;
 mod renderer;
@@ -17,9 +18,12 @@ fn main() {
     if args.iter().any(|a| a == "--dump-news") {
         let cfg = config::Config::load();
         let gaz = geolocation::Gazetteer::load();
-        for a in news::refresh(&cfg, true) {
-            let at = gaz.locate(&a).map(|l| format!("{} ({})", l.name, l.iso)).unwrap_or_else(|| "-".into());
-            println!("{:<28} [{}] {}", at, a.source, a.title);
+        let events = news::events(&cfg, &gaz, news::refresh(&cfg, true));
+        for (i, e) in events.iter().enumerate() {
+            println!("{:>2}. {:.2}  {} ({})  [{}]", i + 1, e.score, e.location.name, e.location.iso, e.sources().join(" "));
+            for a in &e.articles {
+                println!("        {:<4} {}", a.source, a.title);
+            }
         }
         return;
     }

@@ -7,6 +7,8 @@ pub mod rss;
 
 use crate::cache::{Cache, FeedCache};
 use crate::config::{Config, SourceConfig};
+use crate::dedup::{self, Event};
+use crate::geolocation::Gazetteer;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -128,4 +130,16 @@ pub fn refresh(config: &Config, allow_network: bool) -> Vec<Article> {
         }
     }
     articles
+}
+
+/// Geolocate articles (dropping those without a place) and cluster them into scored events.
+pub fn events(config: &Config, gazetteer: &Gazetteer, articles: Vec<Article>) -> Vec<Event> {
+    let items = articles.into_iter().filter_map(|a| gazetteer.locate(&a).map(|l| (a, l))).collect();
+    let mut order: Vec<String> = Vec::new();
+    for s in &config.sources {
+        if !order.contains(&s.name) {
+            order.push(s.name.clone());
+        }
+    }
+    dedup::cluster(items, &order, now())
 }
