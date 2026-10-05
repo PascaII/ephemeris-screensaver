@@ -2,6 +2,9 @@
 
 mod gl_util;
 pub mod map;
+pub mod overlay;
+mod text;
+mod ui;
 
 use crate::astronomy::SubsolarPoint;
 use glow::HasContext;
@@ -16,10 +19,12 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowAttributes};
 
 pub use map::View;
+pub use overlay::{Hits, Overlay};
 
 /// Everything needed to draw one frame.
-pub struct Frame {
+pub struct Frame<'a> {
     pub sun: SubsolarPoint,
+    pub overlay: Overlay<'a>,
 }
 
 /// A window with a current OpenGL 3.3 core context and the GPU resources to draw the scene.
@@ -27,6 +32,7 @@ pub struct Renderer {
     // Field order matters for drop order: GL objects die with the context, before the window.
     pub gl: glow::Context,
     map: map::MapPass,
+    ui: ui::Ui,
     surface: Surface<WindowSurface>,
     context: PossiblyCurrentContext,
     pub window: Window,
@@ -59,10 +65,12 @@ impl Renderer {
 
         let gl = unsafe { glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s)) };
         let map = unsafe { map::MapPass::new(&gl) };
+        let ui = unsafe { ui::Ui::new(&gl) };
         let size = window.inner_size();
         Renderer {
             gl,
             map,
+            ui,
             surface,
             context,
             view: View::new(size.width.max(1) as f64, size.height.max(1) as f64, center_lon),
@@ -77,7 +85,7 @@ impl Renderer {
         self.view = View::new(w.get() as f64, h.get() as f64, self.center_lon);
     }
 
-    pub fn draw(&self, frame: &Frame) {
+    pub fn draw(&mut self, frame: &Frame) -> Hits {
         unsafe {
             let gl = &self.gl;
             gl.viewport(0, 0, self.view.width as i32, self.view.height as i32);
@@ -85,6 +93,7 @@ impl Renderer {
             gl.clear(glow::COLOR_BUFFER_BIT);
             self.map.draw(gl, &self.view, frame.sun);
         }
+        overlay::draw(&mut self.ui, &self.gl, &self.view, &frame.overlay)
     }
 
     pub fn present(&self) {

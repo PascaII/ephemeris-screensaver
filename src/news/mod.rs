@@ -143,3 +143,23 @@ pub fn events(config: &Config, gazetteer: &Gazetteer, articles: Vec<Article>) ->
     }
     dedup::cluster(items, &order, now())
 }
+
+/// Background refresh loop: publish cached events immediately, then refresh from the network and
+/// repeat every refresh interval. Stops when `deliver` returns false (the UI is gone).
+pub fn spawn(config: Config, deliver: impl Fn(Vec<Event>) -> bool + Send + 'static) {
+    std::thread::Builder::new()
+        .name("news".into())
+        .spawn(move || {
+            let gazetteer = Gazetteer::load();
+            if !deliver(events(&config, &gazetteer, refresh(&config, false))) {
+                return;
+            }
+            loop {
+                if !deliver(events(&config, &gazetteer, refresh(&config, true))) {
+                    return;
+                }
+                std::thread::sleep(config.refresh_interval());
+            }
+        })
+        .expect("spawn news thread");
+}

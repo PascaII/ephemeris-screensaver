@@ -35,6 +35,7 @@ pub struct Event {
 }
 
 impl Event {
+    #[cfg(test)]
     pub fn headline(&self) -> &str {
         &self.articles[0].title
     }

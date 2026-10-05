@@ -38,6 +38,8 @@ pub struct Place {
 pub struct Location {
     pub name: String,
     pub iso: String,
+    /// Country display name ("" for seas and other places outside any country).
+    pub country: String,
     pub lat: f64,
     pub lon: f64,
     /// City or region rather than a whole country.
@@ -59,6 +61,7 @@ pub struct Gazetteer {
     /// Lower-case word prefixes (German adjective stems).
     stems: Vec<(String, Entry)>,
     stop: HashSet<String>,
+    country_names: HashMap<String, String>,
 }
 
 /// Lower-case, ß -> ss, and split into words on anything that isn't a letter or digit.
@@ -78,6 +81,7 @@ impl Gazetteer {
             exact_case: HashSet::new(),
             stems: Vec::new(),
             stop: HashSet::new(),
+            country_names: HashMap::new(),
         };
         let mut country_of: HashMap<String, usize> = HashMap::new();
         let rows = GAZETTEER.lines().chain(ALIASES.lines());
@@ -146,6 +150,9 @@ impl Gazetteer {
                     list.push(entry);
                 }
             }
+        }
+        for (iso, &i) in &country_of {
+            g.country_names.insert(iso.clone(), g.places[i].name.clone());
         }
         g
     }
@@ -285,6 +292,7 @@ impl Gazetteer {
         Some(Location {
             name: pl.name.clone(),
             iso: pl.iso.clone(),
+            country: self.country_names.get(&pl.iso).cloned().unwrap_or_default(),
             lat: pl.lat,
             lon: pl.lon,
             precise: pl.kind != Kind::Country,
