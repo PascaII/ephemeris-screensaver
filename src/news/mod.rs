@@ -80,9 +80,11 @@ pub fn now() -> i64 {
 }
 
 fn agent() -> ureq::Agent {
-    use ureq::tls::{TlsConfig, TlsProvider};
+    use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
+    // ureq defaults to WebPki roots, which native-tls cannot use: trust the OS certificate store.
+    let tls = TlsConfig::builder().provider(TlsProvider::NativeTls).root_certs(RootCerts::PlatformVerifier).build();
     ureq::Agent::config_builder()
-        .tls_config(TlsConfig::builder().provider(TlsProvider::NativeTls).build())
+        .tls_config(tls)
         .timeout_global(Some(Duration::from_secs(20)))
         .build()
         .into()
