@@ -4,6 +4,8 @@ use crate::astronomy;
 use crate::config::Config;
 use crate::dedup::Event;
 use crate::renderer::{Blank, Frame, Hits, Overlay, Renderer};
+use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use time::UtcOffset;
@@ -23,6 +25,9 @@ const FADE_IN: f32 = 0.6;
 const RING_SECS: f32 = 1.6;
 /// Mouse travel (physical px) before the cursor is revealed; filters jitter and synthetic moves.
 const MOVE_THRESHOLD: f64 = 8.0;
+/// Input that would end the screensaver is ignored this long after start: the window's creation
+/// (focus, the click on "Preview") produces events that are not the user coming back.
+const INPUT_GRACE: Duration = Duration::from_millis(1500);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Mode {
@@ -72,6 +77,10 @@ pub struct App {
     hovered_marker: Option<usize>,
     hovered_link: Option<usize>,
     hits: Hits,
+
+    started: Instant,
+    /// `exit.log` in the cache dir: window events during the grace period and why the app quit.
+    exit_log: Option<File>,
 }
 
 impl App {
@@ -99,7 +108,17 @@ impl App {
             hovered_marker: None,
             hovered_link: None,
             hits: Hits::default(),
+            started: now,
+            exit_log: None,
         };
+        // Not in preview: the settings dialog restarts it constantly and would overwrite the log.
+        if !app.preview() {
+            let dir = crate::config::cache_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            app.exit_log = File::create(dir.join("exit.log")).ok();
+        }
+        let mode = app.opts.mode.clone();
+        app.log(format_args!("start {mode:?}"));
         app.set_events(events);
         if app.opts.screenshot.is_some() && !app.events.is_empty() {
             // Static frame: show the top event fully faded in.
@@ -217,6 +236,29 @@ impl App {
         matches!(self.opts.mode, Mode::Preview(_))
     }
 
+    fn log(&mut self, msg: std::fmt::Arguments) {
+        let t = self.started.elapsed().as_secs_f64();
+        if let Some(f) = self.exit_log.as_mut() {
+            let _ = writeln!(f, "{t:7.3}s {msg}");
+        }
+    }
+
+    fn quit(&mut self, event_loop: &ActiveEventLoop, reason: &str) {
+        self.log(format_args!("exit: {reason}"));
+        event_loop.exit();
+    }
+
+    /// End the screensaver because the user is back, unless we are still in the start-up grace period.
+    /// Returns true if the app is exiting.
+    fn user_exit(&mut self, event_loop: &ActiveEventLoop, reason: &str) -> bool {
+        if self.started.elapsed() < INPUT_GRACE {
+            self.log(format_args!("ignored during grace period: {reason}"));
+            return false;
+        }
+        self.quit(event_loop, reason);
+        true
+    }
+
     fn update_hover(&mut self) {
         let Some(m) = self.mouse.filter(|_| self.cursor_visible) else {
             self.hovered_marker = None;
@@ -250,10 +292,12 @@ impl App {
             Some(url) => {
                 open_url(&url);
                 if self.screensaver() {
-                    event_loop.exit();
+                    self.quit(event_loop, "opened article");
                 }
             }
-            None if self.screensaver() => event_loop.exit(),
+            None if self.screensaver() => {
+                self.user_exit(event_loop, "left click on the map");
+            }
             None => {}
         }
     }
@@ -361,6 +405,9 @@ impl ApplicationHandler<UserEvent> for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        if self.started.elapsed() < INPUT_GRACE && !matches!(event, WindowEvent::RedrawRequested) {
+            self.log(format_args!("{id:?} {event:?}"));
+        }
         let Some(primary) = self.renderer.as_ref().map(|r| r.window.id()) else { return };
         if self.preview() {
             // The settings dialog owns input; just draw, and quit when it closes the preview.
@@ -374,7 +421,7 @@ impl ApplicationHandler<UserEvent> for App {
                         r.resize(size.width, size.height);
                     }
                 }
-                WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
+                WindowEvent::CloseRequested | WindowEvent::Destroyed => self.quit(event_loop, "preview closed"),
                 _ => {}
             }
             return;
@@ -387,16 +434,20 @@ impl ApplicationHandler<UserEvent> for App {
                         b.draw();
                     }
                 }
-                WindowEvent::MouseInput { state: ElementState::Pressed, .. } | WindowEvent::KeyboardInput { .. } => {
-                    event_loop.exit()
+                WindowEvent::MouseInput { state: ElementState::Pressed, .. } => {
+                    self.user_exit(event_loop, "click on a secondary monitor");
                 }
-                WindowEvent::CloseRequested => event_loop.exit(),
+                WindowEvent::KeyboardInput { event, is_synthetic: false, .. } if event.state == ElementState::Pressed => {
+                    self.user_exit(event_loop, "key press on a secondary monitor");
+                }
+                WindowEvent::CloseRequested => self.quit(event_loop, "secondary window closed"),
                 _ => {}
             }
             return;
         }
         match event {
-            WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
+            WindowEvent::CloseRequested => self.quit(event_loop, "close requested"),
+            WindowEvent::Destroyed => self.quit(event_loop, "window destroyed"),
             WindowEvent::Resized(size) => {
                 if let Some(r) = self.renderer.as_mut() {
                     r.resize(size.width, size.height);
@@ -408,19 +459,20 @@ impl ApplicationHandler<UserEvent> for App {
                 let renderer = self.renderer.as_ref().unwrap();
                 if let Some(path) = &self.opts.screenshot {
                     renderer.save_png(path).expect("write screenshot");
-                    event_loop.exit();
+                    self.quit(event_loop, "screenshot written");
                     return;
                 }
                 renderer.present();
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if let Some(prev) = self.mouse {
+                // While the fullscreen window settles, the cursor "moves" relative to it without the
+                // user touching the mouse: don't count that as travel.
+                if let Some(prev) = self.mouse.filter(|_| self.started.elapsed() >= INPUT_GRACE) {
                     self.mouse_travel += (position.x - prev.x).hypot(position.y - prev.y);
                 }
                 self.mouse = Some(position);
                 if !self.cursor_visible && self.mouse_travel > MOVE_THRESHOLD {
-                    if self.screensaver() && self.config.exit_on_mouse_move {
-                        event_loop.exit();
+                    if self.screensaver() && self.config.exit_on_mouse_move && self.user_exit(event_loop, "mouse moved") {
                         return;
                     }
                     self.cursor_visible = true;
@@ -444,10 +496,15 @@ impl ApplicationHandler<UserEvent> for App {
                 self.update_hover();
                 self.click(event_loop);
             }
-            WindowEvent::MouseInput { state: ElementState::Pressed, .. } if self.screensaver() => event_loop.exit(),
-            WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
-                if self.screensaver() || event.logical_key == Key::Named(NamedKey::Escape) {
-                    event_loop.exit();
+            WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } if self.screensaver() => {
+                self.user_exit(event_loop, &format!("{button:?} click"));
+            }
+            // Synthetic presses are keys already held down when the window gained focus.
+            WindowEvent::KeyboardInput { event, is_synthetic: false, .. } if event.state == ElementState::Pressed => {
+                if self.screensaver() {
+                    self.user_exit(event_loop, &format!("key press {:?}", event.physical_key));
+                } else if event.logical_key == Key::Named(NamedKey::Escape) {
+                    self.quit(event_loop, "escape");
                 }
             }
             _ => {}
