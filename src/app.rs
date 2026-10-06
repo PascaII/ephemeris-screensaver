@@ -25,9 +25,10 @@ const FADE_IN: f32 = 0.6;
 const RING_SECS: f32 = 1.6;
 /// Mouse travel (physical px) before the cursor is revealed; filters jitter and synthetic moves.
 const MOVE_THRESHOLD: f64 = 8.0;
-/// Input that would end the screensaver is ignored this long after start: the window's creation
-/// (focus, the click on "Preview") produces events that are not the user coming back.
-const INPUT_GRACE: Duration = Duration::from_millis(1500);
+/// Input that would end the screensaver is ignored this long after the window is ready: its creation
+/// (focus, the click on "Preview", a phantom AltGr on layouts that have one) produces events that
+/// are not the user coming back. They arrive within milliseconds of the window being ready.
+const INPUT_GRACE: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Mode {
@@ -79,7 +80,9 @@ pub struct App {
     hits: Hits,
 
     started: Instant,
-    /// `exit.log` in the cache dir: window events during the grace period and why the app quit.
+    /// End of the start-up grace period (see `INPUT_GRACE`); reset once the window is ready.
+    input_after: Instant,
+    /// `exit.log` in the cache dir (`debug = true`): start-up window events and why the app quit.
     exit_log: Option<File>,
 }
 
@@ -109,10 +112,11 @@ impl App {
             hovered_link: None,
             hits: Hits::default(),
             started: now,
+            input_after: now + INPUT_GRACE,
             exit_log: None,
         };
         // Not in preview: the settings dialog restarts it constantly and would overwrite the log.
-        if !app.preview() {
+        if app.config.debug && !app.preview() {
             let dir = crate::config::cache_dir();
             let _ = std::fs::create_dir_all(&dir);
             app.exit_log = File::create(dir.join("exit.log")).ok();
@@ -248,10 +252,14 @@ impl App {
         event_loop.exit();
     }
 
+    fn in_grace(&self) -> bool {
+        Instant::now() < self.input_after
+    }
+
     /// End the screensaver because the user is back, unless we are still in the start-up grace period.
     /// Returns true if the app is exiting.
     fn user_exit(&mut self, event_loop: &ActiveEventLoop, reason: &str) -> bool {
-        if self.started.elapsed() < INPUT_GRACE {
+        if self.in_grace() {
             self.log(format_args!("ignored during grace period: {reason}"));
             return false;
         }
@@ -383,6 +391,10 @@ impl ApplicationHandler<UserEvent> for App {
         }
         renderer.window.request_redraw();
         self.renderer = Some(renderer);
+        // Events from the window's creation are delivered after this returns; GL start-up time
+        // (slow after long idle) must not eat into the grace period.
+        self.input_after = Instant::now() + INPUT_GRACE;
+        self.log(format_args!("window ready"));
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
@@ -405,7 +417,7 @@ impl ApplicationHandler<UserEvent> for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        if self.started.elapsed() < INPUT_GRACE && !matches!(event, WindowEvent::RedrawRequested) {
+        if self.in_grace() && !matches!(event, WindowEvent::RedrawRequested) {
             self.log(format_args!("{id:?} {event:?}"));
         }
         let Some(primary) = self.renderer.as_ref().map(|r| r.window.id()) else { return };
@@ -467,7 +479,7 @@ impl ApplicationHandler<UserEvent> for App {
             WindowEvent::CursorMoved { position, .. } => {
                 // While the fullscreen window settles, the cursor "moves" relative to it without the
                 // user touching the mouse: don't count that as travel.
-                if let Some(prev) = self.mouse.filter(|_| self.started.elapsed() >= INPUT_GRACE) {
+                if let Some(prev) = self.mouse.filter(|_| !self.in_grace()) {
                     self.mouse_travel += (position.x - prev.x).hypot(position.y - prev.y);
                 }
                 self.mouse = Some(position);

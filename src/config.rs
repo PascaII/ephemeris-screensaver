@@ -20,6 +20,8 @@ pub struct Config {
     pub show_clock: bool,
     /// Exit the screensaver on mouse movement (classic behaviour) instead of revealing hover cards.
     pub exit_on_mouse_move: bool,
+    /// Write start-up window events and the exit reason to `exit.log` in the cache directory.
+    pub debug: bool,
     /// Skip articles whose NZZ-style kicker starts with one of these (opinion, podcasts, ads).
     pub skip_kickers: Vec<String>,
     /// News topics to show; see `TOPICS`.
@@ -93,6 +95,7 @@ const HEADER: &str = "# Ephemeris screensaver settings. Restart the screensaver 
 #   url = \"https://www.theguardian.com/world/rss\"
 #   lang = \"en\"
 #   topic = \"world\"
+# debug       true writes why the screensaver quit to %LOCALAPPDATA%\\Ephemeris\\exit.log
 ";
 
 fn yes() -> bool {
@@ -109,6 +112,7 @@ impl Default for Config {
             spotlight_seconds: 12,
             show_clock: true,
             exit_on_mouse_move: false,
+            debug: false,
             skip_kickers: ["KOMMENTAR", "GASTKOMMENTAR", "INTERVIEW", "PODCAST", "SPONSORED", "QUIZ", "NEWSLETTER"]
                 .map(String::from)
                 .to_vec(),
