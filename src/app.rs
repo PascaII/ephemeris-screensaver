@@ -1,8 +1,9 @@
 //! Application state machine: window lifecycle, frame pacing, spotlight cycling and input.
 
 use crate::astronomy;
-use crate::config::Config;
+use crate::config::{Config, SunConfig};
 use crate::dedup::Event;
+use crate::renderer::overlay::SunInfo;
 use crate::renderer::{Blank, Frame, Hits, Overlay, Renderer};
 use std::fs::File;
 use std::io::Write;
@@ -56,6 +57,7 @@ pub struct App {
     opts: Options,
     config: Config,
     utc_offset: UtcOffset,
+    sun: Option<SunClock>,
     credits: String,
     renderer: Option<Renderer>,
     /// Black windows covering secondary monitors (screensaver mode).
@@ -90,10 +92,12 @@ impl App {
     pub fn new(opts: Options, config: Config, utc_offset: UtcOffset, events: Vec<Event>) -> Self {
         let credits = config.source_order().join(", ");
         let now = Instant::now();
+        let sun = SunClock::new(&config.sun);
         let mut app = App {
             opts,
             config,
             utc_offset,
+            sun,
             credits,
             renderer: None,
             blanks: Vec::new(),
@@ -202,6 +206,9 @@ impl App {
         let animating = self.opts.screenshot.is_none() && self.animate(dt, now);
 
         let unix = self.now_unix();
+        if let Some(sun) = &mut self.sun {
+            sun.update(unix as i64);
+        }
         let minimal = self.preview();
         let Some(renderer) = self.renderer.as_mut() else { return };
         let frame = Frame {
@@ -214,6 +221,7 @@ impl App {
                 now: unix as i64,
                 utc_offset: self.utc_offset,
                 show_clock: self.config.show_clock,
+                sun: self.sun.as_ref().and_then(|sun| sun.info.as_ref()),
                 show_topics: self.config.topics.len() > 1,
                 credits: &self.credits,
                 minimal,
@@ -307,6 +315,81 @@ impl App {
                 self.user_exit(event_loop, "left click on the map");
             }
             None => {}
+        }
+    }
+}
+
+/// Resolve the zone once; only recalculate astronomical events when its calendar date changes.
+struct SunClock {
+    config: SunConfig,
+    zone: jiff::tz::TimeZone,
+    date: Option<jiff::civil::Date>,
+    info: Option<SunInfo>,
+}
+
+impl SunClock {
+    fn new(config: &SunConfig) -> Option<Self> {
+        if !config.enabled {
+            return None;
+        }
+        if !config.latitude.is_finite()
+            || !(-90.0..=90.0).contains(&config.latitude)
+            || !config.longitude.is_finite()
+            || !(-180.0..=180.0).contains(&config.longitude)
+        {
+            eprintln!("ephemeris: invalid sun coordinates; sun display disabled");
+            return None;
+        }
+        let zone = match jiff::tz::TimeZone::get(&config.timezone) {
+            Ok(zone) => zone,
+            Err(e) => {
+                eprintln!("ephemeris: invalid sun timezone {:?}: {e}; sun display disabled", config.timezone);
+                return None;
+            }
+        };
+        Some(Self { config: config.clone(), zone, date: None, info: None })
+    }
+
+    fn update(&mut self, unix: i64) {
+        let Ok(timestamp) = jiff::Timestamp::from_second(unix) else {
+            self.info = None;
+            self.date = None;
+            return;
+        };
+        let local = timestamp.to_zoned(self.zone.clone());
+        let date = local.date();
+        if self.date != Some(date) {
+            self.info = None;
+            let boundaries = date.tomorrow().and_then(|next| {
+                let start = self.zone.to_ambiguous_zoned(date.at(0, 0, 0, 0)).compatible()?;
+                let end = self.zone.to_ambiguous_zoned(next.at(0, 0, 0, 0)).compatible()?;
+                Ok((start.timestamp().as_second(), end.timestamp().as_second()))
+            });
+            match boundaries {
+                Ok((start, end)) => {
+                    let events = astronomy::sun_times(start, end, self.config.latitude, self.config.longitude);
+                    let format_time = |t: Option<i64>| {
+                        t.and_then(|t| jiff::Timestamp::from_second(t).ok())
+                            .map(|t| {
+                                let d = self.zone.to_datetime(t);
+                                format!("{:02}:{:02}", d.hour(), d.minute())
+                            })
+                            .unwrap_or_else(|| "—".into())
+                    };
+                    let times = match events.polar {
+                        Some(astronomy::PolarState::Day) => "Polar day · Sun does not set".into(),
+                        Some(astronomy::PolarState::Night) => "Polar night · Sun does not rise".into(),
+                        None => format!("Sunrise {} · Sunset {}", format_time(events.sunrise), format_time(events.sunset)),
+                    };
+                    self.info = Some(SunInfo { location: String::new(), times });
+                }
+                Err(e) => eprintln!("ephemeris: cannot calculate sun date: {e}"),
+            }
+            self.date = Some(date);
+        }
+        // The abbreviation can change during a DST transition without changing the date.
+        if let Some(info) = &mut self.info {
+            info.location = format!("{} · {}", self.config.city, local.strftime("%Z"));
         }
     }
 }
@@ -525,5 +608,52 @@ impl ApplicationHandler<UserEvent> for App {
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn timestamp(s: &str) -> i64 {
+        s.parse::<jiff::Timestamp>().unwrap().as_second()
+    }
+
+    #[test]
+    fn sun_clock_uses_city_date_and_updates_on_rollover() {
+        let mut clock = SunClock::new(&SunConfig::default()).unwrap();
+        clock.update(timestamp("2026-06-20T23:30:00Z"));
+        assert_eq!(clock.date.unwrap().to_string(), "2026-06-21");
+        assert_eq!(clock.info.as_ref().unwrap().location, "Zürich · CEST");
+        let old_times = clock.info.as_ref().unwrap().times.clone();
+        clock.update(timestamp("2026-06-21T12:00:00Z"));
+        assert_eq!(clock.info.as_ref().unwrap().times, old_times);
+        clock.update(timestamp("2026-06-21T22:00:00Z"));
+        assert_eq!(clock.date.unwrap().to_string(), "2026-06-22");
+    }
+
+    #[test]
+    fn sun_clock_applies_dst_to_each_event() {
+        let mut clock = SunClock::new(&SunConfig::default()).unwrap();
+        clock.update(timestamp("2026-03-29T00:30:00Z"));
+        assert_eq!(clock.info.as_ref().unwrap().location, "Zürich · CET");
+        let events = clock.info.as_ref().unwrap().times.clone();
+        clock.update(timestamp("2026-03-29T02:30:00Z"));
+        assert_eq!(clock.info.as_ref().unwrap().location, "Zürich · CEST");
+        assert_eq!(clock.info.as_ref().unwrap().times, events, "event offsets are evaluated at the event, not at now");
+    }
+
+    #[test]
+    fn invalid_or_disabled_sun_settings_are_not_displayed() {
+        for config in [
+            SunConfig { enabled: false, ..SunConfig::default() },
+            SunConfig { latitude: f64::NAN, ..SunConfig::default() },
+            SunConfig { latitude: 91.0, ..SunConfig::default() },
+            SunConfig { longitude: f64::INFINITY, ..SunConfig::default() },
+            SunConfig { longitude: -181.0, ..SunConfig::default() },
+            SunConfig { timezone: "Europe/Invalid".into(), ..SunConfig::default() },
+        ] {
+            assert!(SunClock::new(&config).is_none());
+        }
     }
 }
