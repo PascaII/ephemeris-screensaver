@@ -156,6 +156,11 @@ impl App {
         self.hovered_link = None;
     }
 
+    fn over_card(&self) -> bool {
+        self.mouse.filter(|_| self.cursor_visible).zip(self.hits.card)
+            .is_some_and(|(m, r)| r.contains(m.x as f32, m.y as f32))
+    }
+
     /// The event the card should show right now.
     fn card_target(&self) -> Option<usize> {
         if self.events.is_empty() {
@@ -164,8 +169,7 @@ impl App {
         if let Some(i) = self.hovered_marker {
             return Some(i);
         }
-        let over_card = self.mouse.zip(self.hits.card).is_some_and(|(m, r)| r.contains(m.x as f32, m.y as f32));
-        if over_card && self.card.is_some() {
+        if self.over_card() && self.card.is_some() {
             return self.card;
         }
         Some(self.spotlight.min(self.events.len() - 1))
@@ -173,7 +177,7 @@ impl App {
 
     /// Advance animations by `dt` seconds; returns true while anything is still moving.
     fn animate(&mut self, dt: f32, now: Instant) -> bool {
-        let interacting = self.hovered_marker.is_some() || self.hovered_link.is_some();
+        let interacting = self.hovered_marker.is_some() || self.hovered_link.is_some() || self.over_card();
         let spot = Duration::from_secs(self.config.spotlight_seconds.max(3));
         if interacting {
             self.spotlight_since = now;
@@ -617,6 +621,61 @@ mod tests {
 
     fn timestamp(s: &str) -> i64 {
         s.parse::<jiff::Timestamp>().unwrap().as_second()
+    }
+
+    fn spotlight_app() -> App {
+        let events = (0..2)
+            .map(|i| Event {
+                location: crate::geolocation::Location {
+                    name: "Zürich".into(),
+                    iso: "CH".into(),
+                    country: "Switzerland".into(),
+                    lat: 47.3769,
+                    lon: 8.5417,
+                    precise: true,
+                },
+                articles: vec![crate::news::Article { url: format!("https://example.com/{i}"), ..Default::default() }],
+                score: 5.0,
+                latest: 0,
+            })
+            .collect();
+        let mut app = App::new(
+            Options { mode: Mode::Screensaver, screenshot: None, fixed_time: None },
+            Config { sun: SunConfig { enabled: false, ..Default::default() }, ..Default::default() },
+            UtcOffset::UTC,
+            events,
+        );
+        app.card = Some(0);
+        app.card_alpha = 1.0;
+        app.hits.card = Some(crate::renderer::Rect { x: 10.0, y: 10.0, w: 100.0, h: 100.0 });
+        app.mouse = Some(PhysicalPosition::new(50.0, 50.0));
+        app
+    }
+
+    #[test]
+    fn hidden_cursor_does_not_pin_a_story() {
+        let mut app = spotlight_app();
+        let now = Instant::now();
+        app.spotlight_since = now - Duration::from_secs(13);
+        app.animate(0.1, now);
+        assert_eq!(app.spotlight, 1);
+        assert_eq!(app.card_target(), Some(1));
+    }
+
+    #[test]
+    fn visible_card_hover_pauses_and_then_resumes_spotlight() {
+        let mut app = spotlight_app();
+        app.cursor_visible = true;
+        let now = Instant::now();
+        app.spotlight_since = now - Duration::from_secs(13);
+        app.animate(0.1, now);
+        assert_eq!(app.card_target(), Some(0));
+        assert_eq!(app.spotlight, 0);
+        assert_eq!(app.spotlight_since, now);
+        app.mouse = None;
+        app.animate(0.1, now + Duration::from_secs(13));
+        assert_eq!(app.spotlight, 1);
+        assert_eq!(app.card_target(), Some(1));
     }
 
     #[test]
