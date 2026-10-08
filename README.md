@@ -11,6 +11,7 @@ my father wanted an old windows screensaver he used to have, with a world map an
 ## what it does
 
 - renders a flat world map with nasa blue marble imagery by day, soft twilight, and city lights after dark.
+- shows today’s sunrise and sunset for a configurable city, calculated offline.
 - locates news from nzz, bbc, and the new york times using an embedded gazetteer.
 - groups reports about the same event across publishers and languages, showing the last 72 hours by default.
 - shows newspaper-style headline cards, placed over nearby open water where possible and connected to their markers.
@@ -53,6 +54,33 @@ cargo run --release -- --screenshot out.png     # capture a frame
 cargo run --release -- --dump-news              # inspect clustered events
 cargo test                                    # run unit tests
 ```
+
+## sunrise and sunset
+
+add this section to the config file (or edit it in a newly generated file), then restart the screensaver:
+
+```toml
+[sun]
+enabled = true
+city = "Zürich"
+latitude = 47.3769
+longitude = 8.5417
+timezone = "Europe/Zurich"
+```
+
+`city` is the display label; changing cities requires updating its coordinates and IANA timezone too. the defaults also apply to older config files without a `[sun]` section. set `enabled = false` to hide the display. it is independent of `show_clock` and omitted in the tiny settings preview.
+
+times appear below the clock in the city's local timezone, including daylight saving, for the city's current calendar date. the main clock continues to show the computer's local time. `--at` also controls the sun date in screenshots. polar day/night are labelled explicitly; a dash means that particular event does not occur that day. invalid coordinates or timezone disable the sun block and emit a diagnostic.
+
+sunrise/sunset use the [NOAA/Meeus equations](https://gml.noaa.gov/grad/solcalc/calcdetails.html), with the sun's centre at −0.833° and a flat horizon. NOAA documents theoretical accuracy around one minute between ±72° latitude; mountains and atmospheric conditions can change observed times. Zürich's summer/winter tests use independent [US Naval Observatory](https://aa.usno.navy.mil/data/RS_OneDay) references. calculations run once per city-local date, and bundled timezone rules keep this feature entirely offline. timezone rule updates ship with application updates.
+
+three free options were compared:
+
+| option | benefits | tradeoffs |
+| --- | --- | --- |
+| local NOAA/Meeus calculations (chosen) | offline, no requests, tiny daily calculation | calculation validation required; NOAA's hosted calculator is no longer maintained |
+| [sunrise-sunset.org](https://sunrise-sunset.org/api) | no API key, local timezones, polar states | internet dependency and a required visible attribution link |
+| [open-meteo](https://open-meteo.com/en/docs) | sunrise/sunset and timezone support | internet dependency; [free non-commercial service](https://open-meteo.com/en/terms) requires attribution and has usage limits |
 
 ## credits
 

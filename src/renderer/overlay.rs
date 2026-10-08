@@ -34,6 +34,11 @@ const CREDIT: [f32; 3] = [0.490, 0.541, 0.584]; // #7d8a95
 /// little more opaque so headlines stay legible over coastlines and lights.
 const CARD: [f32; 4] = [0.012, 0.031, 0.063, 0.82];
 
+pub struct SunInfo {
+    pub location: String,
+    pub times: String,
+}
+
 pub struct Overlay<'a> {
     pub events: &'a [Event],
     /// Event shown in the card, with its opacity (0..1).
@@ -45,6 +50,7 @@ pub struct Overlay<'a> {
     pub now: i64,
     pub utc_offset: UtcOffset,
     pub show_clock: bool,
+    pub sun: Option<&'a SunInfo>,
     /// Label the card with the event's topic (useful when several topics are selected).
     pub show_topics: bool,
     /// Source names for the attribution line.
@@ -284,6 +290,18 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, land: &LandGrid, o: &O
         keep_out.push(Rect { x: w - margin - tw.max(dw) - 16.0 * s, y: 0.0, w: tw.max(dw) + margin + 16.0 * s, h: base + 40.0 * s });
         (time_text, date_text, big, small, tw, dw, base)
     });
+    let sun = o.sun.map(|info| {
+        let style = TextStyle { weight: Weight::Regular, size: (17.0 * s).round(), color: rgba(INK_MUTED, 0.9), tracking: 0.0 };
+        let max_width = (w - 2.0 * margin).min(380.0 * s);
+        let location = ui.fonts.ellipsize(style.weight, style.size, &info.location, max_width);
+        let times = ui.fonts.ellipsize(style.weight, style.size, &info.times, max_width);
+        let lw = ui.fonts.measure(style.weight, style.size, 0.0, &location);
+        let sw = ui.fonts.measure(style.weight, style.size, 0.0, &times);
+        let base = clock.as_ref().map(|c| c.6 + 62.0 * s).unwrap_or(64.0 * s);
+        keep_out.push(Rect { x: w - margin - lw.max(sw) - 16.0 * s, y: base - 22.0 * s,
+            w: lw.max(sw) + margin + 16.0 * s, h: 60.0 * s });
+        (location, times, style, lw, sw, base)
+    });
     let credit = TextStyle { weight: Weight::Regular, size: (13.0 * s).round(), color: rgba(CREDIT, 1.0), tracking: 0.0 };
     let credit_text = format!("{}   Imagery: NASA Blue Marble, Black Marble   Coastlines: Natural Earth", o.credits);
     let cw = ui.fonts.measure(credit.weight, credit.size, 0.0, &credit_text);
@@ -415,6 +433,10 @@ pub fn draw(ui: &mut Ui, gl: &glow::Context, view: &View, land: &LandGrid, o: &O
     if let Some((time_text, date_text, big, small, tw, dw, base)) = clock {
         ui.text(gl, big, w - margin - tw, base, &time_text);
         ui.text(gl, small, w - margin - dw, base + 6.0 * s + 22.0 * s, &date_text);
+    }
+    if let Some((location, times, style, lw, sw, base)) = sun {
+        ui.text(gl, style, w - margin - lw, base, &location);
+        ui.text(gl, style, w - margin - sw, base + 24.0 * s, &times);
     }
     ui.text(gl, credit, w - margin - cw, h - 40.0 * s, &credit_text);
 

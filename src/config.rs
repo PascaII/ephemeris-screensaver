@@ -18,6 +18,8 @@ pub struct Config {
     pub spotlight_seconds: u64,
     /// Show a small clock in the top-right corner.
     pub show_clock: bool,
+    /// Offline sunrise/sunset location and display settings.
+    pub sun: SunConfig,
     /// Exit the screensaver on mouse movement (classic behaviour) instead of revealing hover cards.
     pub exit_on_mouse_move: bool,
     /// Write start-up window events and the exit reason to `exit.log` in the cache directory.
@@ -30,6 +32,23 @@ pub struct Config {
     pub publishers: Vec<String>,
     /// Additional RSS feeds beyond the built-in catalog.
     pub extra_feeds: Vec<SourceConfig>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SunConfig {
+    pub enabled: bool,
+    pub city: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    /// IANA timezone, including daylight-saving rules (not a fixed UTC offset).
+    pub timezone: String,
+}
+
+impl Default for SunConfig {
+    fn default() -> Self {
+        Self { enabled: true, city: "Zürich".into(), latitude: 47.3769, longitude: 8.5417, timezone: "Europe/Zurich".into() }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -95,6 +114,8 @@ const HEADER: &str = "# Ephemeris screensaver settings. Restart the screensaver 
 #   url = \"https://www.theguardian.com/world/rss\"
 #   lang = \"en\"
 #   topic = \"world\"
+# sun         [sun] sets enabled, city, latitude, longitude and IANA timezone.
+#             Defaults to Zürich / Europe/Zurich; works offline and follows DST.
 # debug       true writes why the screensaver quit to %LOCALAPPDATA%\\Ephemeris\\exit.log
 ";
 
@@ -111,6 +132,7 @@ impl Default for Config {
             max_events: 16,
             spotlight_seconds: 12,
             show_clock: true,
+            sun: SunConfig::default(),
             exit_on_mouse_move: false,
             debug: false,
             skip_kickers: ["KOMMENTAR", "GASTKOMMENTAR", "INTERVIEW", "PODCAST", "SPONSORED", "QUIZ", "NEWSLETTER"]
@@ -229,6 +251,19 @@ fn app_dir(win_var: &str, mac_rel: &str, xdg_var: &str, xdg_rel: &str) -> PathBu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sun_settings_are_backward_compatible() {
+        let old: Config = toml::from_str("show_clock = false").unwrap();
+        assert!(old.sun.enabled);
+        assert_eq!(old.sun.city, "Zürich");
+        assert_eq!(old.sun.timezone, "Europe/Zurich");
+        let partial: Config = toml::from_str("[sun]\ncity = \"Bern\"\nlatitude = 46.948\nlongitude = 7.447").unwrap();
+        assert_eq!(partial.sun.city, "Bern");
+        assert_eq!(partial.sun.timezone, "Europe/Zurich");
+        let roundtrip: Config = toml::from_str(&toml::to_string(&partial).unwrap()).unwrap();
+        assert_eq!(roundtrip.sun.latitude, 46.948);
+    }
 
     #[test]
     fn expands_topics_and_publishers() {

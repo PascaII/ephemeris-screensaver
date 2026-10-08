@@ -20,6 +20,8 @@ use winit::window::{Window, WindowAttributes};
 
 pub use map::View;
 pub use overlay::{Hits, Overlay};
+#[cfg(test)]
+pub use ui::Rect;
 
 /// Everything needed to draw one frame.
 pub struct Frame<'a> {
